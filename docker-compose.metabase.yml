@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Metabase Application (using H2 database for simplicity)
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    hostname: metabase
+    volumes:
+      - /dev/urandom:/dev/random:ro
+      - metabase_data:/metabase-data
+    ports:
+      - "3001:3000"
+    environment:
+      # Metabase configuration - using H2 instead of PostgreSQL
+      MB_DB_TYPE: h2
+      MB_DB_FILE: /metabase-data/metabase.db
+      # Java options for better performance
+      JAVA_OPTS: -Xmx2g -Xms1g
+      # Enable embedding and API access
+      MB_ENABLE_EMBEDDING: true
+      MB_EMBEDDING_SECRET_KEY: ${METABASE_SECRET_KEY:-your-secret-key-here}
+    networks:
+      - metabase-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching (optional but recommended for performance)
+  redis:
+    image: redis:7-alpine
+    container_name: metabase-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - metabase-net
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+networks:
+  metabase-net:
+    driver: bridge
+
+volumes:
+  metabase_data:
+    driver: local
+  redis_data:
+    driver: local

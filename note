@@ -1,0 +1,17 @@
+- 03/10/2025
+- Dataplatform: khách hàng cung cấp api -> có chọn trường lưu, chọn bảng lưu vào csdl 
+- Dash board thêm tính năng upload thông tin mới(tích hợp data platform) 
+và cms (Thay đổi ngôn ngữ, ...), Không tương tác trực tiếp với csdl
+- Demo hoàn chỉnh 
+
+Dataplatform:
+Có giao diện khách hàng nhập vào API mới, và có chọn các trường lưu API
+
+- Chọn bảng lưu vào CSDL
+- Tạo luồng xử lý dữ liệu ETL ngầm trong Airflow:
+Khi khách hàng đưa bất kỳ API nào (trả điểm đến, nhà hàng, khách sạn ,..) => trả về 1 cấu trúc json khác nhau, các trường có thể khác nhau, 
+chuẩn hóa về 1 cấu trúc chung để lưu vào CSDL (Places) (ví dụ: tên, địa chỉ, tọa độ, số điện thoại,...) => Lưu vào CSDL chung, những cái trường bên thuật toán cần
+
+- Dashboard chưa tích hợp
+- Trang admin chưa thấy
+- Phần mã hóa thông tin user(thông tin cá nhân, mật khẩu,...) dùng SHA 
