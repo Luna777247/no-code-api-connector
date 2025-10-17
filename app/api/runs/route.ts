@@ -29,8 +29,11 @@ export async function GET(request: Request) {
     
     if (startDate || endDate) {
       filters.startedAt = {}
-      if (startDate) filters.startedAt.$gte = new Date(startDate)
-      if (endDate) filters.startedAt.$lte = new Date(endDate)
+      if (startDate) filters.startedAt.$gte = new Date(startDate + 'T00:00:00Z')
+      if (endDate) {
+        // Set endDate to end of the day (23:59:59.999 UTC)
+        filters.startedAt.$lte = new Date(endDate + 'T23:59:59.999Z')
+      }
     }
 
     // Get total count for pagination
@@ -43,71 +46,6 @@ export async function GET(request: Request) {
       .skip((page - 1) * limit)
       .limit(limit)
       .toArray()
-
-    // If no runs in DB, return mock data
-    if (runs.length === 0) {
-      const mockRuns = [
-        {
-          id: "run_001",
-          connectionId: "conn_123",
-          status: "success",
-          startedAt: new Date(Date.now() - 3600000).toISOString(),
-          completedAt: new Date(Date.now() - 3550000).toISOString(),
-          duration: 10000,
-          recordsProcessed: 150,
-          recordsLoaded: 148,
-          errorCount: 2,
-          message: "ETL completed successfully"
-        },
-        {
-          id: "run_002", 
-          connectionId: "conn_456",
-          status: "failed",
-          startedAt: new Date(Date.now() - 7200000).toISOString(),
-          completedAt: new Date(Date.now() - 7150000).toISOString(),
-          duration: 5000,
-          recordsProcessed: 0,
-          recordsLoaded: 0,
-          errorCount: 1,
-          message: "Connection timeout error"
-        },
-        {
-          id: "run_003",
-          connectionId: "conn_789", 
-          status: "running",
-          startedAt: new Date(Date.now() - 300000).toISOString(),
-          completedAt: null,
-          duration: null,
-          recordsProcessed: 75,
-          recordsLoaded: 73,
-          errorCount: 0,
-          message: "Processing in progress..."
-        }
-      ].filter(run => {
-        if (status && run.status !== status) return false
-        if (connectionId && run.connectionId !== connectionId) return false
-        return true
-      })
-      
-      const response = {
-        runs: mockRuns.slice((page - 1) * limit, page * limit),
-        pagination: {
-          page,
-          limit,
-          total: mockRuns.length,
-          pages: Math.ceil(mockRuns.length / limit)
-        },
-        filters: { status, connectionId, startDate, endDate },
-        summary: {
-          totalRuns: mockRuns.length,
-          successfulRuns: mockRuns.filter(r => r.status === 'success').length,
-          failedRuns: mockRuns.filter(r => r.status === 'failed').length,
-          runningRuns: mockRuns.filter(r => r.status === 'running').length
-        }
-      }
-      
-      return NextResponse.json(response)
-    }
 
     // Calculate summary statistics
     const summary = {
