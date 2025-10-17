@@ -15,3 +15,15 @@ chuẩn hóa về 1 cấu trúc chung để lưu vào CSDL (Places) (ví dụ: t
 - Dashboard chưa tích hợp
 - Trang admin chưa thấy
 - Phần mã hóa thông tin user(thông tin cá nhân, mật khẩu,...) dùng SHA 
+
+// npm install --legacy-peer-deps
+// npm run dev
+
+endpoint:
+- \analytics\connections: http://localhost:8080/api/analytics/connections/route.php
+- \analytics\runs: http://localhost:8080/api/analytics/runs/route.php?start_date=2025-01-01&end_date=2025-01-31&connection_id=abc
+- \analytics\schedules: http://localhost:8080/api/analytics/schedules/route.php?days=7
+- \config:http://localhost:8080/api/config/route.php?category=system&format=json&includeSecrets=false
+- \connections\[id]: http://localhost:8080/api/connections/[id]/route.php?id=abc
+- \connections: http://localhost:8080/api/connections/route.php
+- 
