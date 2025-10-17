@@ -13,40 +13,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     })
 
     if (!schedule) {
-      // Mock data for development
-      const mockSchedule = {
-        id: scheduleId,
-        name: `Schedule ${scheduleId}`,
-        description: "Automated ETL schedule",
-        connectionId: "conn_123",
-        connectionName: "Sample API Connection",
-        cronExpression: "0 0 * * *", // Daily at midnight
-        cronDescription: "Daily at 12:00 AM",
-        timezone: "UTC",
-        isActive: true,
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastRun: new Date(Date.now() - 3600000).toISOString(),
-        nextRun: new Date(Date.now() + 82800000).toISOString(), // Next day
-        totalRuns: 15,
-        successfulRuns: 14,
-        failedRuns: 1,
-        averageDuration: 45000, // 45 seconds
-        config: {
-          retryAttempts: 3,
-          retryDelay: 5000,
-          timeoutMs: 300000,
-          notifyOnFailure: true,
-          notificationEmail: "admin@example.com"
-        },
-        recentRuns: [
-          { runId: "run_001", status: "success", startedAt: new Date(Date.now() - 3600000).toISOString(), duration: 42000 },
-          { runId: "run_002", status: "success", startedAt: new Date(Date.now() - 90000000).toISOString(), duration: 38000 },
-          { runId: "run_003", status: "failed", startedAt: new Date(Date.now() - 176400000).toISOString(), duration: 15000 }
-        ]
-      }
-      
-      return NextResponse.json(mockSchedule)
+      return NextResponse.json({ error: "Schedule not found" }, { status: 404 })
     }
 
     return NextResponse.json(schedule)
@@ -69,7 +36,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // Validate cron expression if provided
     if (updateData.cronExpression) {
       // Basic validation - in production use a proper cron parser
-      const cronRegex = /^(\*|[0-5]?\d) (\*|[01]?\d|2[0-3]) (\*|[12]?\d|3[01]) (\*|[1-9]|1[012]) (\*|[0-7])$/
+      const cronRegex = /^(\*|(?:\*\/)?[0-5]?\d) (\*|(?:\*\/)?(?:[01]?\d|2[0-3])) (\*|(?:\*\/)?(?:[12]?\d|3[01])) (\*|(?:\*\/)?(?:[1-9]|1[012])) (\*|(?:\*\/)?[0-7])$/
       if (!cronRegex.test(updateData.cronExpression)) {
         return NextResponse.json({ 
           error: "Invalid cron expression format" 

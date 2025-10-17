@@ -1,53 +1,88 @@
 import { NextResponse } from "next/server"
 import { airflowClient } from "@/lib/airflow-client"
+import { getDb } from "@/lib/mongo"
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { connectionId, scheduleType, cronExpression, workflowConfig } = body
 
+    // Validate required fields
+    if (!connectionId || !scheduleType || !cronExpression) {
+      return NextResponse.json({
+        error: "Missing required fields: connectionId, scheduleType, cronExpression"
+      }, { status: 400 })
+    }
+
+    // Basic cron expression validation
+    const cronRegex = /^(\*|([0-9]|[1-5][0-9])|(\*\/[0-9]+)|([0-9]+-[0-9]+)|([0-9]+(,[0-9]+)*)) (\*|([0-9]|1[0-9]|2[0-3])|(\*\/[0-9]+)|([0-9]+-[0-9]+)|([0-9]+(,[0-9]+)*)) (\*|([1-9]|[12][0-9]|3[01])|(\*\/[0-9]+)|([0-9]+-[0-9]+)|([0-9]+(,[0-9]+)*)) (\*|([1-9]|1[0-2])|(\*\/[0-9]+)|([0-9]+-[0-9]+)|([0-9]+(,[0-9]+)*)) (\*|([0-7])|(\*\/[0-9]+)|([0-9]+-[0-9]+)|([0-9]+(,[0-9]+)*))$/
+    if (!cronRegex.test(cronExpression)) {
+      return NextResponse.json({
+        error: "Invalid cron expression format"
+      }, { status: 400 })
+    }
+
     console.log("[v0] Creating Airflow schedule for connection:", connectionId)
     console.log("[v0] Schedule type:", scheduleType)
     console.log("[v0] CRON expression:", cronExpression)
 
-    // Create DAG in Airflow
+    // Try to save to database
+    const db = await getDb()
+    const scheduleId = `sched_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    const schedule = {
+      scheduleId,
+      connectionId,
+      connectionName: `Connection ${connectionId}`,
+      scheduleType,
+      cronExpression,
+      isActive: true,
+      nextRun: new Date(Date.now() + 86400000).toISOString(), // Next day
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      workflowConfig: workflowConfig || {},
+    }
+
+    await db.collection('api_schedules').insertOne(schedule)
+    console.log("[v0] Schedule saved to database:", scheduleId)
+
+    // Try Airflow integration
     try {
       const dagId = await airflowClient.createDag(connectionId, cronExpression, workflowConfig)
-      
-      // Unpause the DAG so it can run on schedule
       await airflowClient.pauseDag(dagId, false)
-      
-      const schedule = {
-        id: dagId,
-        connectionId,
-        scheduleType,
-        cronExpression,
-        isActive: true,
-        airflowDagId: dagId,
-        nextRun: new Date(Date.now() + 86400000).toISOString(), // Rough estimate
-        createdAt: new Date().toISOString(),
-      }
+
+      // Update with Airflow info
+      await db.collection('api_schedules').updateOne(
+        { scheduleId },
+        {
+          $set: {
+            airflowDagId: dagId,
+            updatedAt: new Date().toISOString()
+          }
+        }
+      )
 
       console.log("[v0] Airflow DAG created successfully:", dagId)
-      return NextResponse.json(schedule, { status: 201 })
-      
+      return NextResponse.json({ ...schedule, airflowDagId: dagId }, { status: 201 })
+
     } catch (airflowError) {
       console.error("[v0] Airflow integration error:", airflowError)
-      
-      // Fallback to mock behavior if Airflow is not available
-      console.log("[v0] Falling back to mock scheduler")
-      const schedule = {
-        id: Math.random().toString(36).substr(2, 9),
-        connectionId,
-        scheduleType,
-        cronExpression,
-        isActive: true,
-        airflowError: airflowError instanceof Error ? airflowError.message : "Airflow unavailable",
-        nextRun: new Date(Date.now() + 86400000).toISOString(),
-        createdAt: new Date().toISOString(),
-      }
 
-      return NextResponse.json(schedule, { status: 201 })
+      // Update with Airflow error but keep schedule
+      await db.collection('api_schedules').updateOne(
+        { scheduleId },
+        {
+          $set: {
+            airflowError: airflowError instanceof Error ? airflowError.message : "Airflow unavailable",
+            updatedAt: new Date().toISOString()
+          }
+        }
+      )
+
+      return NextResponse.json({
+        ...schedule,
+        airflowError: airflowError instanceof Error ? airflowError.message : "Airflow unavailable"
+      }, { status: 201 })
     }
   } catch (error) {
     console.error("[v0] Error creating schedule:", error)
@@ -57,83 +92,41 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    console.log("[v0] Fetching schedules from Airflow")
-    
-    // Try to get DAGs from Airflow
-    try {
-      const dags = await airflowClient.getDags()
-      const etlDags = dags.filter(dag => dag.dag_id.startsWith('etl_workflow_'))
-      
-      const schedules = await Promise.all(
-        etlDags.map(async (dag) => {
-          const connectionId = dag.dag_id.replace('etl_workflow_', '')
-          
-          // Get recent DAG runs
-          try {
-            const dagRuns = await airflowClient.getDagRuns(dag.dag_id, 5)
-            const lastRun = dagRuns[0]
-            
-            return {
-              id: dag.dag_id,
-              connectionId,
-              connectionName: `Connection ${connectionId}`,
-              scheduleType: dag.schedule_interval === '0 0 * * *' ? 'daily' : 
-                           dag.schedule_interval === '0 * * * *' ? 'hourly' : 'custom',
-              cronExpression: dag.schedule_interval || 'None',
-              isActive: !dag.is_paused,
-              airflowDagId: dag.dag_id,
-              nextRun: new Date(Date.now() + 86400000).toISOString(), // Airflow calculates this
-              lastRun: lastRun ? lastRun.execution_date : null,
-              lastStatus: lastRun ? lastRun.state : 'never_run',
-              totalRuns: dagRuns.length,
-              tags: dag.tags,
-              lastParsed: dag.last_parsed_time,
-            }
-          } catch (runError) {
-            console.error(`[v0] Error fetching runs for DAG ${dag.dag_id}:`, runError)
-            return {
-              id: dag.dag_id,
-              connectionId,
-              connectionName: `Connection ${connectionId}`,
-              scheduleType: 'unknown',
-              cronExpression: dag.schedule_interval || 'None',
-              isActive: !dag.is_paused,
-              airflowDagId: dag.dag_id,
-              nextRun: null,
-              lastRun: null,
-              lastStatus: 'unknown',
-              totalRuns: 0,
-            }
-          }
+    // Try to get schedules from database
+    const db = await getDb()
+    const schedules = await db.collection('api_schedules').find({}).toArray()
+
+    // Return database schedules with enriched data
+    const enrichedSchedules = await Promise.all(
+      schedules.map(async (schedule) => {
+        // Count total runs for this schedule
+        const totalRuns = await db.collection('api_runs').countDocuments({
+          scheduleId: schedule.scheduleId
         })
-      )
-      
-      console.log(`[v0] Found ${schedules.length} Airflow schedules`)
-      return NextResponse.json(schedules)
-      
-    } catch (airflowError) {
-      console.error("[v0] Airflow fetch error, falling back to mock data:", airflowError)
-      
-      // Fallback to mock data if Airflow is not available
-      const schedules = [
-        {
-          id: "1",
-          connectionName: "JSONPlaceholder Users API",
-          scheduleType: "daily",
-          cronExpression: "0 0 * * *",
-          isActive: true,
-          nextRun: new Date(Date.now() + 86400000).toISOString(),
-          lastRun: new Date(Date.now() - 3600000).toISOString(),
-          lastStatus: "success",
-          totalRuns: 45,
-          airflowError: airflowError instanceof Error ? airflowError.message : "Airflow unavailable",
-        },
-      ]
-      
-      return NextResponse.json(schedules)
-    }
+
+        // Get last run info
+        const lastRun = await db.collection('api_runs')
+          .find({ scheduleId: schedule.scheduleId })
+          .sort({ createdAt: -1 })
+          .limit(1)
+          .toArray()
+
+        return {
+          ...schedule,
+          totalRuns,
+          lastRun: lastRun[0]?.createdAt || null,
+          lastStatus: lastRun[0]?.status || 'never_run',
+          nextRun: schedule.nextRun || null,
+          connectionName: schedule.connectionName || `Connection ${schedule.connectionId}`,
+        }
+      })
+    )
+
+    console.log(`[v0] Found ${enrichedSchedules.length} database schedules`)
+    return NextResponse.json(enrichedSchedules)
+
   } catch (error) {
-    console.error("[v0] Error fetching schedules:", error)
+    console.error("[v0] Error fetching schedules from database:", error)
     return NextResponse.json({ error: "Failed to fetch schedules" }, { status: 500 })
   }
 }

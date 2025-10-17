@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, Database, FileJson } from "lucide-react"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button"
 
 export default function RunDetailPage({ params }: { params: { id: string } }) {
   // Mock data
@@ -77,12 +78,15 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <Button variant="ghost" asChild className="mb-4 gap-2">
-            <Link href="/runs">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Runs
-            </Link>
-          </Button>
+          <div className="flex items-center gap-4 mb-4">
+            <BackToHomeButton />
+            <Button variant="ghost" asChild className="gap-2">
+              <Link href="/runs">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Runs
+              </Link>
+            </Button>
+          </div>
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{run.connectionName}</h1>

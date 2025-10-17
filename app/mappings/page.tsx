@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Settings, Database, ArrowRight } from "lucide-react"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button"
 
 export default function MappingsPage() {
   // Mock data
@@ -28,6 +29,9 @@ export default function MappingsPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <BackToHomeButton />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight">Field Mappings</h1>
           <p className="text-muted-foreground mt-1">Configure how API fields map to database columns</p>
         </div>
