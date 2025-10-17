@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Edit
 } from "lucide-react"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button"
 
 interface Connection {
   _id: string
@@ -198,6 +199,7 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
+            <BackToHomeButton />
             <Link href="/connections">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />

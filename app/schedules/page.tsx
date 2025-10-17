@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button"
 
 export default function SchedulesPage() {
   // Mock data
@@ -32,9 +33,12 @@ export default function SchedulesPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Schedules</h1>
-            <p className="text-muted-foreground mt-1">Manage automated API runs and schedules</p>
+          <div className="flex items-center gap-4">
+            <BackToHomeButton />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Schedules</h1>
+              <p className="text-muted-foreground mt-1">Manage automated API runs and schedules</p>
+            </div>
           </div>
           <Link href="/connections/new">
             <Button className="gap-2">

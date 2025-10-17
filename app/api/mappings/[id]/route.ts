@@ -105,15 +105,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         $set: {
           ...updateData,
           updatedAt: new Date()
+        },
+        $setOnInsert: {
+          mappingId: mappingId,
+          createdAt: new Date(),
+          usageCount: 0,
+          lastUsed: null
         }
-      }
+      },
+      { upsert: true }
     )
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Field mapping not found" }, { status: 404 })
-    }
-
-    // Fetch updated mapping
+    // Fetch updated/created mapping
     const updatedMapping = await db.collection('api_field_mappings').findOne({ 
       mappingId: mappingId 
     })

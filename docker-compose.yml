@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for Metabase (Alternative to Atlas)
+  postgres:
+    image: postgres:15-alpine
+    container_name: metabase-postgres
+    environment:
+      POSTGRES_DB: metabase
+      POSTGRES_USER: metabase_user
+      POSTGRES_PASSWORD: metabase_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - metabase-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U metabase_user -d metabase"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Metabase Application (using local PostgreSQL)
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase-local
+    hostname: metabase-local
+    volumes:
+      - /dev/urandom:/dev/random:ro
+    ports:
+      - "3001:3000"
+    environment:
+      # Metabase configuration - using local PostgreSQL
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: metabase_user
+      MB_DB_PASS: metabase_password
+      MB_DB_HOST: postgres
+      # Java options for better performance
+      JAVA_OPTS: -Xmx2g -Xms1g
+      # Enable embedding and API access
+      MB_ENABLE_EMBEDDING: true
+      MB_EMBEDDING_SECRET_KEY: ${METABASE_SECRET_KEY:-your-secret-key-here}
+    networks:
+      - metabase-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Redis for caching (optional but recommended for performance)
+  redis:
+    image: redis:7-alpine
+    container_name: metabase-redis-local
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - metabase-net
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+networks:
+  metabase-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

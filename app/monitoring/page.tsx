@@ -20,6 +20,7 @@ import {
   Search,
 } from "lucide-react"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button"
 
 export default function MonitoringPage() {
   const [timeRange, setTimeRange] = useState("24h")
@@ -144,9 +145,12 @@ export default function MonitoringPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Monitoring & Logs</h1>
-            <p className="text-muted-foreground mt-1">Real-time system health and performance metrics</p>
+          <div className="flex items-center gap-4">
+            <BackToHomeButton />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Monitoring & Logs</h1>
+              <p className="text-muted-foreground mt-1">Real-time system health and performance metrics</p>
+            </div>
           </div>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-48">

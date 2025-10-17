@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -5,48 +8,46 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PlayCircle, Clock, CheckCircle2, XCircle, AlertCircle, Search, Filter, Eye } from "lucide-react"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+
+interface Run {
+  _id: string
+  connectionId: string
+  status: string
+  startedAt: string
+  completedAt?: string
+  executionTime?: number
+  recordsProcessed: number
+  totalRequests: number
+  successfulRequests: number
+  failedRequests: number
+  errors?: any
+  metadata?: {
+    apiUrl?: string
+    method?: string
+  }
+}
 
 export default function RunsPage() {
-  // Mock data
-  const runs = [
-    {
-      id: "1",
-      connectionName: "JSONPlaceholder Users API",
-      status: "success",
-      startedAt: new Date(Date.now() - 3600000),
-      completedAt: new Date(Date.now() - 3000000),
-      duration: "10m 0s",
-      totalRequests: 10,
-      successfulRequests: 10,
-      failedRequests: 0,
-      recordsExtracted: 100,
-      recordsLoaded: 100,
-    },
-    {
-      id: "2",
-      connectionName: "JSONPlaceholder Users API",
-      status: "failed",
-      startedAt: new Date(Date.now() - 7200000),
-      completedAt: new Date(Date.now() - 6600000),
-      duration: "10m 0s",
-      totalRequests: 10,
-      successfulRequests: 7,
-      failedRequests: 3,
-      recordsExtracted: 70,
-      recordsLoaded: 70,
-      errorMessage: "Connection timeout on request 8",
-    },
-    {
-      id: "3",
-      connectionName: "JSONPlaceholder Users API",
-      status: "running",
-      startedAt: new Date(Date.now() - 300000),
-      totalRequests: 10,
-      successfulRequests: 5,
-      failedRequests: 0,
-      recordsExtracted: 50,
-    },
-  ]
+  const [runs, setRuns] = useState<Run[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    console.log('[v0] Fetching runs from API...')
+    fetch('/api/runs')
+      .then(res => res.json())
+      .then(data => {
+        console.log('[v0] Runs fetched:', data)
+        setRuns(data.runs || [])
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('[v0] Error fetching runs:', err)
+        setError('Failed to load runs')
+        setLoading(false)
+      })
+  }, [])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -81,6 +82,9 @@ export default function RunsPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <BackToHomeButton />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight">Run History</h1>
           <p className="text-muted-foreground mt-1">View and monitor API execution history</p>
         </div>
@@ -122,7 +126,22 @@ export default function RunsPage() {
         </Card>
 
         {/* Runs List */}
-        {runs.length === 0 ? (
+        {loading ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Clock className="h-12 w-12 text-muted-foreground mb-4 animate-spin" />
+              <p className="text-muted-foreground">Loading runs...</p>
+            </CardContent>
+          </Card>
+        ) : error ? (
+          <Card className="border-destructive">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <XCircle className="h-12 w-12 text-destructive mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Error loading runs</h3>
+              <p className="text-muted-foreground text-center">{error}</p>
+            </CardContent>
+          </Card>
+        ) : runs.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <PlayCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -137,66 +156,83 @@ export default function RunsPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {runs.map((run) => (
-              <Card key={run.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-lg">{run.connectionName}</CardTitle>
-                        <Badge variant={getStatusVariant(run.status)} className="gap-1">
-                          {getStatusIcon(run.status)}
-                          {run.status}
-                        </Badge>
+            {runs.map((run) => {
+              const duration = run.executionTime 
+                ? `${Math.floor(run.executionTime / 1000)}s` 
+                : "In progress..."
+              const startDate = new Date(run.startedAt)
+              const completedDate = run.completedAt ? new Date(run.completedAt) : null
+              
+              return (
+                <Card key={run._id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <CardTitle className="text-lg">
+                            Connection: {run.connectionId}
+                          </CardTitle>
+                          <Badge variant={getStatusVariant(run.status)} className="gap-1">
+                            {getStatusIcon(run.status)}
+                            {run.status}
+                          </Badge>
+                        </div>
+                        <CardDescription>
+                          Started {startDate.toLocaleString()}
+                          {completedDate && ` • Completed ${completedDate.toLocaleString()}`}
+                        </CardDescription>
+                        {run.metadata?.apiUrl && (
+                          <p className="text-xs text-muted-foreground mt-1 font-mono">
+                            {run.metadata.method || 'GET'} {run.metadata.apiUrl}
+                          </p>
+                        )}
                       </div>
-                      <CardDescription>
-                        Started {run.startedAt.toLocaleString()}
-                        {run.completedAt && ` • Completed ${run.completedAt.toLocaleString()}`}
-                      </CardDescription>
+                      <Link href={`/runs/${run._id}`}>
+                        <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                          <Eye className="h-4 w-4" />
+                          View Details
+                        </Button>
+                      </Link>
                     </div>
-                    <Link href={`/runs/${run.id}`}>
-                      <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                        <Eye className="h-4 w-4" />
-                        View Details
-                      </Button>
-                    </Link>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-5">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Duration</p>
-                      <p className="text-sm font-medium mt-1">{run.duration || "In progress..."}</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-5">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Duration</p>
+                        <p className="text-sm font-medium mt-1">{duration}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Requests</p>
+                        <p className="text-sm font-medium mt-1">
+                          {run.successfulRequests}/{run.totalRequests}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Success Rate</p>
+                        <p className="text-sm font-medium mt-1">
+                          {run.totalRequests > 0 
+                            ? Math.round((run.successfulRequests / run.totalRequests) * 100) 
+                            : 0}%
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Records Processed</p>
+                        <p className="text-sm font-medium mt-1">{run.recordsProcessed}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Failed Requests</p>
+                        <p className="text-sm font-medium mt-1">{run.failedRequests}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Requests</p>
-                      <p className="text-sm font-medium mt-1">
-                        {run.successfulRequests}/{run.totalRequests}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Success Rate</p>
-                      <p className="text-sm font-medium mt-1">
-                        {Math.round((run.successfulRequests / run.totalRequests) * 100)}%
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Records Extracted</p>
-                      <p className="text-sm font-medium mt-1">{run.recordsExtracted}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Records Loaded</p>
-                      <p className="text-sm font-medium mt-1">{run.recordsLoaded || "-"}</p>
-                    </div>
-                  </div>
-                  {run.errorMessage && (
-                    <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                      <p className="text-sm text-destructive">{run.errorMessage}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                    {run.errors && (
+                      <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <p className="text-sm text-destructive">{JSON.stringify(run.errors)}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
       </div>

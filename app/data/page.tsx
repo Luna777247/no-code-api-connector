@@ -1,27 +1,66 @@
+'use client'
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Database, Search, Download, Filter } from "lucide-react"
+import { Database, Search, Download, Filter, Clock, XCircle } from "lucide-react"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+
+interface DataResponse {
+  summary: {
+    totalRuns: number
+    totalRecords: number
+    avgExecutionTime: number
+    estimatedDataSize: string
+  }
+  connectionBreakdown: Array<{
+    connectionId: string
+    runCount: number
+    totalRecords: number
+    avgExecutionTime: number
+    lastRun: string
+  }>
+  data: Array<{
+    runId: string
+    connectionId: string
+    timestamp: string
+    recordsProcessed: number
+    status: string
+  }>
+}
 
 export default function DataPage() {
-  // Mock data
-  const tables = [
-    {
-      name: "users_data",
-      connection: "JSONPlaceholder Users API",
-      recordCount: 100,
-      lastUpdated: new Date(Date.now() - 3600000),
-      fields: ["user_id", "user_name", "user_email", "user_phone", "company_name"],
-    },
-  ]
+  const [data, setData] = useState<DataResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    console.log('[v0] Fetching data from API...')
+    fetch('/api/data')
+      .then(res => res.json())
+      .then(data => {
+        console.log('[v0] Data fetched:', data)
+        setData(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('[v0] Error fetching data:', err)
+        setError('Failed to load data')
+        setLoading(false)
+      })
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <BackToHomeButton />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight">Data Explorer</h1>
           <p className="text-muted-foreground mt-1">Browse and export extracted data</p>
         </div>
@@ -48,8 +87,23 @@ export default function DataPage() {
           </CardContent>
         </Card>
 
-        {/* Tables List */}
-        {tables.length === 0 ? (
+        {/* Data Summary */}
+        {loading ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Clock className="h-12 w-12 text-muted-foreground mb-4 animate-spin" />
+              <p className="text-muted-foreground">Loading data...</p>
+            </CardContent>
+          </Card>
+        ) : error ? (
+          <Card className="border-destructive">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <XCircle className="h-12 w-12 text-destructive mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Error loading data</h3>
+              <p className="text-muted-foreground text-center">{error}</p>
+            </CardContent>
+          </Card>
+        ) : !data || data.connectionBreakdown.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Database className="h-12 w-12 text-muted-foreground mb-4" />
@@ -60,42 +114,65 @@ export default function DataPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
-            {tables.map((table) => (
-              <Card key={table.name}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Database className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle className="text-lg font-mono">{table.name}</CardTitle>
-                        <Badge variant="outline">{table.recordCount} records</Badge>
-                      </div>
-                      <CardDescription>
-                        From: {table.connection} • Last updated: {table.lastUpdated.toLocaleString()}
-                      </CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                      <Download className="h-4 w-4" />
-                      Export
-                    </Button>
-                  </div>
+          <>
+            {/* Summary Stats */}
+            <div className="grid gap-4 md:grid-cols-4 mb-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Total Runs</CardDescription>
+                  <CardTitle className="text-2xl">{data.summary.totalRuns}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-2">Fields ({table.fields.length})</p>
-                    <div className="flex flex-wrap gap-2">
-                      {table.fields.map((field) => (
-                        <Badge key={field} variant="secondary" className="font-mono text-xs">
-                          {field}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
               </Card>
-            ))}
-          </div>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Total Records</CardDescription>
+                  <CardTitle className="text-2xl">{data.summary.totalRecords}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Avg Execution Time</CardDescription>
+                  <CardTitle className="text-2xl">{Math.round(data.summary.avgExecutionTime / 1000)}s</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Data Size</CardDescription>
+                  <CardTitle className="text-2xl">{data.summary.estimatedDataSize}</CardTitle>
+                </CardHeader>
+              </Card>
+            </div>
+
+            {/* Connection Breakdown */}
+            <div className="grid gap-4">
+              {data.connectionBreakdown.map((connection) => {
+                const lastRun = new Date(connection.lastRun)
+                return (
+                  <Card key={connection.connectionId}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Database className="h-5 w-5 text-muted-foreground" />
+                            <CardTitle className="text-lg font-mono">{connection.connectionId}</CardTitle>
+                            <Badge variant="outline">{connection.totalRecords} records</Badge>
+                            <Badge variant="secondary">{connection.runCount} runs</Badge>
+                          </div>
+                          <CardDescription>
+                            Last updated: {lastRun.toLocaleString()} • Avg: {Math.round(connection.avgExecutionTime / 1000)}s
+                          </CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                          <Download className="h-4 w-4" />
+                          Export
+                        </Button>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                )
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>

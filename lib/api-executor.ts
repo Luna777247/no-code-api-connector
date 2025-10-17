@@ -28,11 +28,21 @@ export class ApiExecutor {
     const startTime = Date.now()
     let lastError: Error | null = null
 
+    // Build URL with query parameters
+    let url = request.url
+    if (request.params && Object.keys(request.params).length > 0) {
+      const urlObj = new URL(url)
+      Object.entries(request.params).forEach(([key, value]) => {
+        urlObj.searchParams.append(key, String(value))
+      })
+      url = urlObj.toString()
+    }
+
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
-        console.log(`[v0] Executing API request (attempt ${attempt + 1}/${this.maxRetries + 1}):`, request.url)
+        console.log(`[v0] Executing API request (attempt ${attempt + 1}/${this.maxRetries + 1}):`, url)
 
-        const response = await fetch(request.url, {
+        const response = await fetch(url, {
           method: request.method,
           headers: {
             "Content-Type": "application/json",
@@ -42,11 +52,13 @@ export class ApiExecutor {
         })
 
         const responseTime = Date.now() - startTime
-        const data = await response.json()
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          const errorText = await response.text().catch(() => '')
+          throw new Error(`HTTP ${response.status}: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`)
         }
+
+        const data = await response.json()
 
         console.log(`[v0] API request successful in ${responseTime}ms`)
 

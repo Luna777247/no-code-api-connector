@@ -6,9 +6,9 @@ import { Toaster } from "@/components/ui/sonner"
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'no-code-api-connector',
+  description: 'No-code API connector and ETL platform',
+  generator: 'Next.js',
 }
 
 export default function RootLayout({
