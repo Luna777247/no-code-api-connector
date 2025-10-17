@@ -1,23 +1,40 @@
 import { NextResponse } from "next/server"
+import { getDb } from "@/lib/mongo"
 
-// Mock API endpoint for managing connections
+// GET all connections from MongoDB
 export async function GET() {
-  // TODO: Fetch from database
-  const connections = [
-    {
-      id: "1",
-      name: "JSONPlaceholder Users API",
-      description: "Sample API for testing - fetches user data",
-      baseUrl: "https://jsonplaceholder.typicode.com/users",
-      method: "GET",
-      isActive: true,
-      lastRun: new Date(Date.now() - 7200000).toISOString(),
-      totalRuns: 15,
-      successRate: 100,
-    },
-  ]
+  try {
+    console.log('[v0] Fetching connections from MongoDB...')
+    const db = await getDb()
+    const connections = await db.collection('api_connections')
+      .find({})
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray()
 
-  return NextResponse.json(connections)
+    console.log('[v0] Found connections:', connections.length)
+
+    // Transform MongoDB data for frontend
+    const transformedConnections = connections.map(conn => ({
+      id: conn._id,
+      connectionId: conn.connectionId,
+      name: conn.name || conn.connectionId,
+      description: conn.description || 'API Connection',
+      baseUrl: conn.apiConfig?.baseUrl || '',
+      method: conn.apiConfig?.method || 'GET',
+      isActive: conn.isActive !== false,
+      lastRun: conn.lastRun || conn.createdAt,
+      totalRuns: conn.totalRuns || 0,
+      successRate: conn.successRate || 100,
+      createdAt: conn.createdAt
+    }))
+
+    return NextResponse.json(transformedConnections)
+  } catch (error) {
+    console.error('[v0] Error fetching connections:', error)
+    // Return empty array on error (graceful degradation)
+    return NextResponse.json([])
+  }
 }
 
 export async function POST(request: Request) {
