@@ -1,5 +1,6 @@
 // File Upload Handler - Handle CSV, Excel, JSON file uploads for data ingestion
 import { getDb } from "./mongo"
+import { CollectionManager, type UploadDocument } from "./database-schema"
 
 export interface FileUploadConfig {
   fileType?: 'csv' | 'excel' | 'json' | 'xml'
@@ -219,34 +220,33 @@ export class FileUploadHandler {
   ): Promise<void> {
     const db = await getDb()
 
-    // Save upload metadata
-    const uploadsCollection = db.collection('api_file_uploads')
-    await uploadsCollection.insertOne({
-      uploadId,
+    // Infer schema from records
+    const schema = records.length > 0 ? this.inferSchema(records[0]) : {}
+
+    // Create unified upload document with embedded data
+    const uploadDocument: Omit<UploadDocument, '_id'> = {
       connectionId,
       fileName,
+      fileType: metadata.fileName.split('.').pop() as 'csv' | 'json' | 'excel' | 'xml',
       fileSize: metadata.fileSize,
       recordCount: metadata.recordCount,
-      schema: metadata.schema,
-      status: metadata.status,
-      errors: metadata.errors,
-      uploadedAt: new Date()
-    })
+      uploadStatus: metadata.status === 'success' ? 'completed' : metadata.status === 'partial' ? 'completed' : 'failed',
+      errorMessage: metadata.errors.length > 0 ? metadata.errors.join('; ') : undefined,
+      _insertedAt: new Date().toISOString(),
+      rawData: records, // Embed all raw data directly
+      schema: {
+        fields: Object.entries(schema).map(([name, type]) => ({
+          name,
+          type: type as string,
+          nullable: true // Default to nullable
+        }))
+      }
+    }
 
-    // Save actual data to raw zone
-    const dataCollection = db.collection('api_data_raw')
-    await dataCollection.insertMany(
-      records.map(record => ({
-        ...record,
-        _uploadId: uploadId,
-        _connectionId: connectionId,
-        _fileName: fileName,
-        _source: 'file_upload',
-        _insertedAt: new Date()
-      }))
-    )
+    const uploadsCollection = db.collection(CollectionManager.getCollectionName('UPLOADS'))
+    await uploadsCollection.insertOne(uploadDocument)
 
-    console.log(`[v0] Saved ${records.length} records to database (uploadId: ${uploadId})`)
+    console.log(`[v0] Saved ${records.length} records to ${CollectionManager.getCollectionName('UPLOADS')} (uploadId: ${uploadId})`)
   }
 
   // Get upload history
@@ -256,25 +256,28 @@ export class FileUploadHandler {
   ): Promise<FileUploadResult[]> {
     try {
       const db = await getDb()
-      const collection = db.collection('api_file_uploads')
+      const collection = db.collection(CollectionManager.getCollectionName('UPLOADS'))
 
       const query = connectionId ? { connectionId } : {}
 
       const uploads = await collection
         .find(query)
-        .sort({ uploadedAt: -1 })
+        .sort({ _insertedAt: -1 })
         .limit(limit)
         .toArray()
 
-      return uploads.map(u => ({
-        uploadId: u.uploadId,
+      return uploads.map((u: any) => ({
+        uploadId: u._id.toString(),
         fileName: u.fileName,
         fileSize: u.fileSize,
         recordCount: u.recordCount,
-        schema: u.schema,
-        preview: [],
-        errors: u.errors || [],
-        status: u.status
+        schema: u.schema?.fields?.reduce((acc: any, field: any) => {
+          acc[field.name] = field.type
+          return acc
+        }, {}) || {},
+        preview: u.rawData?.slice(0, 5) || [],
+        errors: u.errorMessage ? [u.errorMessage] : [],
+        status: u.uploadStatus === 'completed' ? 'success' : u.uploadStatus === 'failed' ? 'failed' : 'partial'
       }))
     } catch (error) {
       console.error('[v0] Error fetching upload history:', error)

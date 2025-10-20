@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDb } from "@/lib/mongo"
 import { PlacesNormalizer } from "@/lib/places-normalizer"
+import { CollectionManager } from "@/lib/database-schema"
 
 // GET /api/places - Lấy danh sách places đã chuẩn hóa
 export async function GET(request: NextRequest) {
@@ -15,16 +16,16 @@ export async function GET(request: NextRequest) {
     console.log("[v0] Fetching places:", { category, sourceApi, page, limit, search })
 
     const db = await getDb()
-    const collection = db.collection('api_places_standardized')
+    const collection = db.collection(CollectionManager.getCollectionName('DATA'))
 
-    // Build filter
-    const filters: any = {}
-    if (category) filters.category = category
-    if (sourceApi) filters.source_api = sourceApi
+    // Build filter - always include type filter for places_standardized
+    const filters: any = { type: 'places_standardized' }
+    if (category) filters['data.category'] = category
+    if (sourceApi) filters['placesMetadata.sourceApi'] = sourceApi
     if (search) {
       filters.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { address: { $regex: search, $options: 'i' } }
+        { 'data.name': { $regex: search, $options: 'i' } },
+        { 'data.address': { $regex: search, $options: 'i' } }
       ]
     }
 
@@ -38,8 +39,17 @@ export async function GET(request: NextRequest) {
 
     const total = await collection.countDocuments(filters)
 
+    // Transform places data to match expected format
+    const transformedPlaces = places.map(place => ({
+      _id: place._id,
+      ...place.data,
+      _insertedAt: place._insertedAt,
+      source_api: place.placesMetadata?.sourceApi || 'unknown',
+      normalized: place.placesMetadata?.normalized || false
+    }))
+
     // If no data, return mock places data
-    if (places.length === 0) {
+    if (transformedPlaces.length === 0) {
       const mockPlaces = [
         {
           _id: "1",
@@ -122,7 +132,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      places,
+      places: transformedPlaces,
       pagination: {
         page,
         limit,
@@ -162,23 +172,24 @@ export async function POST(request: NextRequest) {
 
     // Save to MongoDB
     const db = await getDb()
-    const collection = db.collection('api_places_standardized')
+    const collection = db.collection(CollectionManager.getCollectionName('DATA'))
 
-    // Add metadata
+    // Add metadata in new schema format
     const placesWithMetadata = standardizedPlaces.map(place => ({
-      ...place,
+      type: 'places_standardized' as const,
       connectionId,
-      _insertedAt: new Date(),
-      _source: {
-        api: sourceApi,
-        normalized_at: new Date(),
-        connection_id: connectionId
+      _insertedAt: new Date().toISOString(),
+      data: place,
+      placesMetadata: {
+        sourceApi,
+        normalized: true,
+        standardizationVersion: '1.0'
       }
     }))
 
     const result = await collection.insertMany(placesWithMetadata)
 
-    console.log(`[v0] Inserted ${result.insertedCount} standardized places`)
+    console.log(`[v0] Inserted ${result.insertedCount} standardized places to ${CollectionManager.getCollectionName('DATA')} (type: places_standardized)`)
 
     return NextResponse.json({
       message: `Successfully normalized and saved ${result.insertedCount} places`,

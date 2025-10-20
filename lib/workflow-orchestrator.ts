@@ -4,10 +4,11 @@ import { ParameterGenerator, type Parameter } from "./parameter-generator"
 import { DataTransformer, type FieldMapping } from "./data-transformer"
 import { PlacesNormalizer } from "./places-normalizer"
 import { DataValidator, type ValidationRule } from "./data-validator"
-import { LineageTracker, DataVersioning } from "./data-lineage"
+import { LineageTracker } from "./data-lineage" // Removed DataVersioning import
 import { AuditLogger } from "./audit-logger"
 import { cacheManager } from "./redis-cache"
 import { getDb } from "./mongo"
+import { CollectionManager, type DataDocument } from "./database-schema"
 
 export interface WorkflowConfig {
   connectionId: string
@@ -20,6 +21,7 @@ export interface WorkflowConfig {
   }
   parameters: Parameter[]
   fieldMappings: FieldMapping[]
+  tableName?: string // Target collection name for storing data
   validationRules?: ValidationRule[]
   options?: {
     maxRetries?: number
@@ -27,8 +29,9 @@ export interface WorkflowConfig {
     batchSize?: number
     enableCaching?: boolean
     enableLineageTracking?: boolean
-    enableVersioning?: boolean
+    enablePlacesNormalization?: boolean
     enableAuditLog?: boolean
+    // enableVersioning?: boolean // Commented out - versioning feature removed
   }
 }
 
@@ -89,15 +92,41 @@ export class WorkflowOrchestrator {
 
     try {
       // Step 1: Generate parameter combinations
-      const paramCombinations = this.paramGenerator.generateCombinations(config.parameters)
-      console.log(`[v0] Generated ${paramCombinations.length} parameter combinations`)
+      // Handle both Parameter[] and simple object formats
+      let processedParameters: Parameter[] = [];
+
+      if (Array.isArray(config.parameters)) {
+        if (config.parameters.length > 0 && typeof config.parameters[0] === 'object' && 'name' in config.parameters[0] && 'value' in config.parameters[0]) {
+          // Convert array of simple parameter objects {name, value, type} to Parameter format
+          processedParameters = config.parameters.map((paramObj: any) => ({
+            name: paramObj.name,
+            type: 'query' as const,
+            mode: 'list' as const,
+            values: [paramObj.value]
+          }));
+        } else {
+          processedParameters = config.parameters;
+        }
+      } else if (typeof config.parameters === 'object' && config.parameters !== null) {
+        // Convert single parameter object to Parameter array
+        processedParameters = Object.entries(config.parameters).map(([key, value]) => ({
+          name: key,
+          type: 'query' as const,
+          mode: 'list' as const,
+          values: [value as string]
+        }));
+      }
+
+      const paramCombinations = this.paramGenerator.generateCombinations(processedParameters)
+      console.log(`[v0] Processed parameters:`, processedParameters)
+      console.log(`[v0] Generated ${paramCombinations.length} parameter combinations:`, paramCombinations)
 
       // Step 2: Build API requests
       const requests: ApiRequest[] = paramCombinations.map((params) => ({
         url: this.buildUrl(config.apiConfig.baseUrl, params),
         method: config.apiConfig.method,
         headers: this.buildHeaders(config.apiConfig),
-        params,
+        // params are already included in the URL, don't pass them separately
       }))
 
       // Step 3: Execute API requests with caching
@@ -137,13 +166,28 @@ export class WorkflowOrchestrator {
         if (Array.isArray(result.data)) {
           return result.data
         }
+        // Handle API responses that return objects with data arrays
+        if (result.data && typeof result.data === 'object') {
+          // Check for common array fields in API responses
+          if (Array.isArray(result.data.results)) {
+            return result.data.results // Google Maps, etc.
+          }
+          if (Array.isArray(result.data.data)) {
+            return result.data.data // Some APIs use 'data'
+          }
+          if (Array.isArray(result.data.items)) {
+            return result.data.items // Some APIs use 'items'
+          }
+        }
         return [result.data]
       })
 
       console.log(`[v0] Extracted ${extractedData.length} records`)
+      console.log(`[v0] First extracted record:`, JSON.stringify(extractedData[0], null, 2))
 
       const transformedData = this.transformer.transformBatch(extractedData, config.fieldMappings)
       console.log(`[v0] Transformed ${transformedData.length} records`)
+      console.log(`[v0] First transformed record:`, JSON.stringify(transformedData[0], null, 2))
 
       // Track transformation in lineage
       if (config.options?.enableLineageTracking !== false) {
@@ -154,23 +198,29 @@ export class WorkflowOrchestrator {
         )
       }
 
-      // Step 4.1: Places normalization (nếu là places data)
-      let placesData: any[] = []
+      // Step 4.1: Save raw data if it's places data
       if (this.isPlacesData(extractedData)) {
-        console.log(`[v0] Detected places data, normalizing...`)
+        console.log(`[v0] Detected places data, saving raw data...`)
+        await this.saveRawPlacesToDatabase(extractedData, config.connectionId)
+      }
+
+      // Step 4.2: Places normalization (nếu là places data và được enable)
+      const placesData: any[] = []
+      if (this.isPlacesData(extractedData) && config.options?.enablePlacesNormalization !== false) {
+        console.log(`[v0] Places normalization enabled, normalizing...`)
         const placesNormalizer = new PlacesNormalizer()
-        const sourceApi = this.detectSourceApi(config.apiConfig.baseUrl)
-        
+        const sourceApi = this.extractSourceApi(config.connectionId || 'unknown')
+
         for (const result of successfulResults) {
           const normalized = placesNormalizer.normalizeToPlaces(result.data, sourceApi)
           placesData.push(...normalized)
         }
-        
+
         console.log(`[v0] Normalized ${placesData.length} places`)
-        
-        // Save normalized places to separate collection
+
+        // Save normalized places
         if (placesData.length > 0) {
-          await this.savePlacesToDatabase(placesData, config.connectionId)
+          await this.saveNormalizedPlacesToDatabase(placesData, config.connectionId)
         }
       }
 
@@ -199,67 +249,68 @@ export class WorkflowOrchestrator {
       
       console.log(`[v0] Validated ${validData.length} records`)
 
-      // Step 6: Load to database
-      console.log(`[v0] Loading ${validData.length} records to database...`)
-      if (validData.length > 0) {
-        try {
-          await this.loadToDatabase(validData, config.connectionId)
-          
-          // Track destination in lineage
-          if (config.options?.enableLineageTracking !== false) {
-            this.lineageTracker.trackDestination(
-              `db_${config.connectionId}`,
-              'api_data_transformed',
-              'MongoDB',
-              [`transform_${runId}`] // Input nodes array
-            )
-            
-            // Complete lineage tracking
-            await this.lineageTracker.completeTracking('completed', validData.length)
+      // Step 6: Load to database (only for non-places data)
+      const isPlacesData = this.isPlacesData(extractedData)
+      console.log(`[v0] Is places data: ${isPlacesData}`)
+
+      if (!isPlacesData) {
+        // Only save transformed data if it's NOT places data
+        console.log(`[v0] Loading ${validData.length} transformed records to database...`)
+        if (validData.length > 0) {
+          try {
+            await this.loadToDatabase(validData, config.connectionId, config.tableName)
+
+            // Track destination in lineage
+            if (config.options?.enableLineageTracking !== false) {
+              this.lineageTracker.trackDestination(
+                `db_${config.connectionId}`,
+                config.tableName || 'api_data',
+                'MongoDB',
+                [`transform_${runId}`] // Input nodes array
+              )
+
+              // Complete lineage tracking
+              await this.lineageTracker.completeTracking('completed', validData.length)
+            }
+
+            // Log successful data load
+            if (config.options?.enableAuditLog !== false) {
+              await AuditLogger.logDataAccess(
+                'accessed',
+                config.connectionId,
+                undefined, // TODO: Get userId from context
+                { runId, recordCount: validData.length, action: 'loaded' }
+              )
+            }
+          } catch (err) {
+            console.error("[v0] Error loading to database:", err)
+            errors.push(err instanceof Error ? err.message : String(err))
+
+            // Track failed lineage
+            if (config.options?.enableLineageTracking !== false) {
+              await this.lineageTracker.completeTracking('failed')
+            }
+
+            // Log error
+            if (config.options?.enableAuditLog !== false) {
+              await AuditLogger.logError(
+                'error.occurred',
+                'Load data to database',
+                'connection',
+                config.connectionId,
+                err instanceof Error ? err.message : String(err),
+                undefined, // TODO: Get userId from context
+                { runId }
+              )
+            }
           }
-          
-          // Create data version if enabled
-          if (config.options?.enableVersioning !== false) {
-            const newVersion = await DataVersioning.createVersion(
-              `dataset_${config.connectionId}`,
-              config.connectionId,
-              validData,
-              [`Workflow execution ${runId}`, `Loaded ${validData.length} records`],
-              undefined // TODO: Get userId from context
-            )
-            console.log(`[v0] Created data version: ${newVersion}`)
-          }
-          
-          // Log successful data load
-          if (config.options?.enableAuditLog !== false) {
-            await AuditLogger.logDataAccess(
-              'accessed',
-              config.connectionId,
-              undefined, // TODO: Get userId from context
-              { runId, recordCount: validData.length, action: 'loaded' }
-            )
-          }
-        } catch (err) {
-          console.error("[v0] Error loading to database:", err)
-          errors.push(err instanceof Error ? err.message : String(err))
-          
-          // Track failed lineage
-          if (config.options?.enableLineageTracking !== false) {
-            await this.lineageTracker.completeTracking('failed')
-          }
-          
-          // Log error
-          if (config.options?.enableAuditLog !== false) {
-            await AuditLogger.logError(
-              'error.occurred',
-              'Load data to database',
-              'connection',
-              config.connectionId,
-              err instanceof Error ? err.message : String(err),
-              undefined, // TODO: Get userId from context
-              { runId }
-            )
-          }
+        }
+      } else {
+        console.log(`[v0] Skipping transformed data load for places data (already saved as places_raw/places_standardized)`)
+
+        // Complete lineage tracking for places data
+        if (config.options?.enableLineageTracking !== false) {
+          await this.lineageTracker.completeTracking('completed', placesData.length)
         }
       }
 
@@ -268,31 +319,38 @@ export class WorkflowOrchestrator {
 
       console.log(`[v0] Workflow completed in ${duration}ms with status: ${status}`)
 
-      // Step 7: Save run to api_runs collection for tracking
+      // Step 7: Save run to api_data collection with type 'run'
       try {
         const db = await getDb()
-        await db.collection('api_runs').insertOne({
-          _id: runId as any, // MongoDB accepts string as _id
+        const recordsLoaded = isPlacesData ? placesData.length : validData.length
+
+        const runDocument = {
+          type: 'run' as const,
           connectionId: config.connectionId,
-          status,
-          startedAt: new Date(startTime),
-          completedAt: new Date(),
-          executionTime: duration,
-          recordsProcessed: validData.length,
-          totalRequests: requests.length,
-          successfulRequests: successfulResults.length,
-          failedRequests: failedResults.length,
-          dataPreview: extractedData.slice(0, 5), // Store first 5 raw records
-          transformedData: validData.slice(0, 10), // Store first 10 transformed records
-          errors: errors.length > 0 ? errors : undefined,
-          metadata: {
-            apiUrl: config.apiConfig.baseUrl,
-            method: config.apiConfig.method,
-            parameterCount: config.parameters.length,
-            fieldMappingCount: config.fieldMappings.length
+          runId: runId,
+          _connectionId: config.connectionId,
+          _insertedAt: new Date().toISOString(),
+          data: {
+            dataPreview: extractedData.slice(0, 5), // Store first 5 raw records
+            transformedData: isPlacesData ? [] : validData.slice(0, 10), // Only store transformed data for non-places
+          },
+          runMetadata: {
+            status: status as 'success' | 'failed' | 'partial',
+            totalRequests: requests.length,
+            successfulRequests: successfulResults.length,
+            failedRequests: failedResults.length,
+            recordsExtracted: extractedData.length,
+            recordsLoaded: recordsLoaded,
+            dataType: isPlacesData ? 'places' : 'transformed',
+            duration,
+            errors: errors.length > 0 ? errors : [],
+            startedAt: new Date(startTime).toISOString(),
+            completedAt: new Date().toISOString()
           }
-        })
-        console.log(`[v0] Saved run ${runId} to api_runs collection`)
+        }
+
+        await db.collection(CollectionManager.getCollectionName('DATA')).insertOne(runDocument)
+        console.log(`[v0] Saved run ${runId} to api_data collection (type: run)`)
       } catch (dbError) {
         console.error("[v0] Error saving run to database:", dbError)
         // Don't fail the workflow if run save fails
@@ -416,43 +474,93 @@ export class WorkflowOrchestrator {
     return 'generic_places'
   }
 
-  private async savePlacesToDatabase(placesData: any[], connectionId: string): Promise<void> {
+  private async saveRawPlacesToDatabase(placesData: any[], connectionId: string): Promise<void> {
     try {
       const db = await getDb()
-      const collection = db.collection('api_places_standardized')
+      const collection = db.collection(CollectionManager.getCollectionName('DATA'))
       
-      const placesWithMetadata = placesData.map(place => ({
-        ...place,
+      const rawPlacesWithMetadata = placesData.map(place => ({
+        type: 'places_raw' as const,
         connectionId,
-        _insertedAt: new Date(),
-        _source: {
-          connection_id: connectionId,
-          normalized_at: new Date()
+        _connectionId: connectionId,
+        _insertedAt: new Date().toISOString(),
+        data: place,
+        placesMetadata: {
+          sourceApi: this.extractSourceApi(connectionId),
+          normalized: false,
+          raw: true
         }
       }))
       
-      const result = await collection.insertMany(placesWithMetadata)
-      console.log(`[v0] Saved ${result.insertedCount} normalized places to database`)
+      const result = await collection.insertMany(rawPlacesWithMetadata)
+      console.log(`[v0] Saved ${result.insertedCount} raw places to ${CollectionManager.getCollectionName('DATA')} (type: places_raw)`)
       
     } catch (error) {
-      console.error("[v0] Error saving places to database:", error)
+      console.error("[v0] Error saving raw places to database:", error)
       throw error
     }
   }
   
-  // Persist transformed records into MongoDB collection `api_data_transformed`
-  private async loadToDatabase(records: Record<string, any>[], connectionId: string) {
+  private async saveNormalizedPlacesToDatabase(placesData: any[], connectionId: string): Promise<void> {
+    try {
+      const db = await getDb()
+      const collection = db.collection(CollectionManager.getCollectionName('DATA'))
+      
+      const placesWithMetadata = placesData.map(place => ({
+        type: 'places_standardized' as const,
+        connectionId,
+        _connectionId: connectionId,
+        _insertedAt: new Date().toISOString(),
+        data: place,
+        placesMetadata: {
+          sourceApi: this.extractSourceApi(connectionId),
+          normalized: true,
+          standardizationVersion: '1.0'
+        }
+      }))
+      
+      const result = await collection.insertMany(placesWithMetadata)
+      console.log(`[v0] Saved ${result.insertedCount} normalized places to ${CollectionManager.getCollectionName('DATA')} (type: places_standardized)`)
+      
+    } catch (error) {
+      console.error("[v0] Error saving normalized places to database:", error)
+      throw error
+    }
+  }
+  
+  // Persist transformed records into MongoDB collection specified by tableName
+  private async loadToDatabase(records: Record<string, any>[], connectionId: string, tableName?: string) {
     const db = await getDb()
-    const coll = db.collection("api_data_transformed")
 
-    // add metadata to each record
-    const docs = records.map((r) => ({
-      ...r,
+    // Determine data type based on tableName or default
+    const dataType = this.getDataType(tableName)
+
+    // Create documents for the unified collection
+    const docs = records.map((record) => ({
+      _id: undefined, // Let MongoDB generate ObjectId
+      type: dataType,
+      connectionId,
       _connectionId: connectionId,
-      _insertedAt: new Date(),
+      _insertedAt: new Date().toISOString(),
+      data: record
+      // placesMetadata is only added for places_raw and places_standardized types
     }))
 
-    const res = await coll.insertMany(docs)
-    console.log(`[v0] Inserted ${res.insertedCount} documents into api_data_transformed`)
+    const collection = db.collection(CollectionManager.getCollectionName('DATA'))
+    const res = await collection.insertMany(docs)
+    console.log(`[v0] Inserted ${res.insertedCount} documents into ${CollectionManager.getCollectionName('DATA')} (type: ${dataType})`)
+  }
+
+  private getDataType(tableName?: string): DataDocument['type'] {
+    // Always return 'transformed_data' for regular API data transformation
+    // Places data is handled separately with places_raw and places_standardized types
+    return 'transformed_data'
+  }
+
+  private extractSourceApi(connectionId: string): string {
+    // Extract source API from connection ID or return default
+    if (connectionId.includes('rapidapi')) return 'rapidapi'
+    if (connectionId.includes('google')) return 'google'
+    return 'unknown'
   }
 }

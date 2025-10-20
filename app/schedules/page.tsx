@@ -1,8 +1,11 @@
+'use client'
+
 import Link from "next/link"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, Play, Pause, Trash2, MoreVertical } from "lucide-react"
+import { Calendar, Clock, Play, Pause, Trash2, MoreVertical, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,43 +13,114 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+import { PageLayout } from "@/components/ui/page-layout"
+
+interface Schedule {
+  id: string
+  connectionName: string
+  scheduleType: string
+  cronExpression: string
+  isActive: boolean
+  nextRun: string
+  lastRun: string | null
+  lastStatus: string
+  totalRuns: number
+}
 
 export default function SchedulesPage() {
-  // Mock data
-  const schedules = [
-    {
-      id: "1",
-      connectionName: "JSONPlaceholder Users API",
-      scheduleType: "daily",
-      cronExpression: "0 0 * * *",
-      isActive: true,
-      nextRun: new Date(Date.now() + 86400000),
-      lastRun: new Date(Date.now() - 3600000),
-      lastStatus: "success",
-      totalRuns: 45,
-    },
-  ]
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <BackToHomeButton />
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Schedules</h1>
-              <p className="text-muted-foreground mt-1">Manage automated API runs and schedules</p>
-            </div>
-          </div>
+  useEffect(() => {
+    async function fetchSchedules() {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/scheduler')
+        if (!response.ok) {
+          throw new Error('Failed to fetch schedules')
+        }
+        const data = await response.json()
+        const mappedData = (data || []).map((schedule: any) => ({
+          ...schedule,
+          id: schedule._id || schedule.id
+        }))
+        setSchedules(mappedData)
+      } catch (err) {
+        console.error('[v0] Error fetching schedules:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load schedules')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSchedules()
+  }, [])
+
+  if (loading) {
+    return (
+      <PageLayout
+        title="Schedules"
+        description="Manage automated API runs and schedules"
+        showBackButton={true}
+        headerActions={
+          <Link href="/connections/new">
+            <Button className="gap-2" disabled>
+              <Calendar className="h-4 w-4" />
+              Create Schedule
+            </Button>
+          </Link>
+        }
+      >
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading schedules...</span>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <PageLayout
+        title="Schedules"
+        description="Manage automated API runs and schedules"
+        showBackButton={true}
+        headerActions={
           <Link href="/connections/new">
             <Button className="gap-2">
               <Calendar className="h-4 w-4" />
               Create Schedule
             </Button>
           </Link>
-        </div>
+        }
+      >
+        <Card className="border-destructive">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-destructive mb-4">⚠️ Error loading schedules</div>
+            <p className="text-muted-foreground text-center mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </PageLayout>
+    )
+  }
+
+  return (
+    <PageLayout
+      description="Manage automated API runs and schedules"
+      showBackButton={true}
+      headerActions={
+        <Link href="/connections/new">
+          <Button className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Create Schedule
+          </Button>
+        </Link>
+      }
+    >
 
         {/* Schedules List */}
         {schedules.length === 0 ? (
@@ -110,14 +184,14 @@ export default function SchedulesPage() {
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-xs text-muted-foreground">Next Run</p>
-                        <p className="text-sm font-medium">{schedule.nextRun.toLocaleString()}</p>
+                        <p className="text-sm font-medium">{new Date(schedule.nextRun).toLocaleString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-xs text-muted-foreground">Last Run</p>
-                        <p className="text-sm font-medium">{schedule.lastRun.toLocaleString()}</p>
+                        <p className="text-sm font-medium">{schedule.lastRun ? new Date(schedule.lastRun).toLocaleString() : 'Never'}</p>
                       </div>
                     </div>
                     <div>
@@ -136,7 +210,6 @@ export default function SchedulesPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </PageLayout>
   )
 }

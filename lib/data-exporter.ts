@@ -1,5 +1,6 @@
 // Data Export Handler - Export data to various formats (CSV, JSON, Parquet)
 import { getDb } from "./mongo"
+import { CollectionManager } from "./database-schema"
 
 export type ExportFormat = 'csv' | 'json' | 'xlsx' | 'parquet'
 
@@ -210,16 +211,14 @@ export class DataExporter {
     connectionId: string,
     config: ExportConfig
   ): Promise<ExportResult> {
-    const db = await getDb()
-    const collection = db.collection('api_data_transformed')
-
-    // Add connectionId filter
+    // Export transformed data for this connection
     const filter = {
       ...config.filter,
-      _connectionId: connectionId
+      type: 'transformed_data',
+      connectionId: connectionId
     }
 
-    return this.export('api_data_transformed', {
+    return this.export(CollectionManager.getCollectionName('DATA'), {
       ...config,
       filter
     })
@@ -233,21 +232,25 @@ export class DataExporter {
     const db = await getDb()
     
     // First get the run to find connectionId
-    const runsCollection = db.collection('api_runs')
-    const run = await runsCollection.findOne({ runId })
+    const runsCollection = db.collection(CollectionManager.getCollectionName('DATA'))
+    const run = await runsCollection.findOne({ 
+      type: 'run',
+      runId: runId 
+    })
 
     if (!run) {
       throw new Error(`Run not found: ${runId}`)
     }
 
-    // Export data for this run
+    // Export transformed data for this run
     const filter = {
       ...config.filter,
-      _connectionId: run.connectionId,
-      _runId: runId
+      type: 'transformed_data',
+      connectionId: run.connectionId,
+      runId: runId
     }
 
-    return this.export('api_data_transformed', {
+    return this.export(CollectionManager.getCollectionName('DATA'), {
       ...config,
       filter
     })

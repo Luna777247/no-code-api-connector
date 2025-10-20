@@ -25,7 +25,7 @@ export async function GET() {
     try {
       // This would check Redis if configured
       redisResponseTime = 5 // Mock response time
-    } catch (error) {
+    } catch (_error) {
       redisStatus = "unhealthy" 
     }
 

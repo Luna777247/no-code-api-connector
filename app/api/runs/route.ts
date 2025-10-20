@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getDb } from "@/lib/mongo"
+import { CollectionManager } from "@/lib/database-schema"
 
 // GET /api/runs - Lấy danh sách tất cả runs với phân trang và filter
 export async function GET(request: Request) {
@@ -16,11 +17,11 @@ export async function GET(request: Request) {
 
     const db = await getDb()
     
-    // Build filter query
-    const filters: any = {}
+    // Build filter query for api_data collection with type 'run'
+    const filters: any = { type: 'run' }
     
     if (status) {
-      filters.status = status
+      filters['runMetadata.status'] = status
     }
     
     if (connectionId) {
@@ -28,35 +29,47 @@ export async function GET(request: Request) {
     }
     
     if (startDate || endDate) {
-      filters.startedAt = {}
-      if (startDate) filters.startedAt.$gte = new Date(startDate + 'T00:00:00Z')
+      filters['runMetadata.startedAt'] = {}
+      if (startDate) filters['runMetadata.startedAt'].$gte = new Date(startDate + 'T00:00:00Z')
       if (endDate) {
         // Set endDate to end of the day (23:59:59.999 UTC)
-        filters.startedAt.$lte = new Date(endDate + 'T23:59:59.999Z')
+        filters['runMetadata.startedAt'].$lte = new Date(endDate + 'T23:59:59.999Z')
       }
     }
 
     // Get total count for pagination
-    const totalRuns = await db.collection('api_runs').countDocuments(filters)
+    const totalRuns = await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments(filters)
     
     // Fetch runs with pagination
-    const runs = await db.collection('api_runs')
+    const runs = await db.collection(CollectionManager.getCollectionName('DATA'))
       .find(filters)
-      .sort({ startedAt: -1 }) // Newest first
+      .sort({ 'runMetadata.startedAt': -1 }) // Newest first
       .skip((page - 1) * limit)
       .limit(limit)
       .toArray()
 
+    // Transform MongoDB documents to match frontend interface
+    const transformedRuns = runs.map(run => ({
+      id: run._id.toString(),
+      status: run.runMetadata?.status || 'running',
+      startedAt: run.runMetadata?.startedAt || run._insertedAt,
+      duration: run.runMetadata?.duration,
+      recordsExtracted: run.runMetadata?.recordsExtracted,
+      errorMessage: run.runMetadata?.errorMessage,
+      connectionId: run.connectionId,
+      runId: run.runId
+    }))
+
     // Calculate summary statistics
     const summary = {
       totalRuns,
-      successfulRuns: await db.collection('api_runs').countDocuments({ ...filters, status: 'success' }),
-      failedRuns: await db.collection('api_runs').countDocuments({ ...filters, status: 'failed' }),
-      runningRuns: await db.collection('api_runs').countDocuments({ ...filters, status: 'running' })
+      successfulRuns: await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments({ ...filters, 'runMetadata.status': 'success' }),
+      failedRuns: await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments({ ...filters, 'runMetadata.status': 'failed' }),
+      runningRuns: await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments({ ...filters, 'runMetadata.status': 'running' })
     }
 
     const response = {
-      runs,
+      runs: transformedRuns,
       pagination: {
         page,
         limit,

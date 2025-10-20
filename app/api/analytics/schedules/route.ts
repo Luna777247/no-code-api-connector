@@ -18,6 +18,10 @@ export async function GET(request: Request) {
       const dags = await airflowClient.getDags()
       const etlDags = dags.filter(dag => dag.dag_id.startsWith('etl_workflow_'))
       
+      if (etlDags.length === 0) {
+        throw new Error('No ETL DAGs found in Airflow')
+      }
+      
       // Get DAG runs for each ETL DAG
       const dagRunsPromises = etlDags.map(async (dag) => {
         try {

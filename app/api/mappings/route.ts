@@ -8,33 +8,48 @@ export async function GET(request: Request) {
     const connectionId = searchParams.get('connectionId')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
-    
+
     console.log("[v0] Fetching field mappings:", { connectionId, page, limit })
 
     const db = await getDb()
-    
-    // Build filter
-    const filters: any = {}
+
+    // Build filter for connections
+    const filters: any = { type: 'connection' }
     if (connectionId) {
-      filters.connectionId = connectionId
+      filters._connectionId = connectionId
     }
 
-    const mappings = await db.collection('api_field_mappings')
+    // Get connections with field mappings
+    const connections = await db.collection('api_metadata')
       .find(filters)
-      .sort({ createdAt: -1 })
+      .sort({ _insertedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .toArray()
 
-    const total = await db.collection('api_field_mappings').countDocuments(filters)
+    // Transform connections to mapping format
+    const mappings = connections
+      .filter(conn => conn.connectionData?.fieldMappings && conn.connectionData.fieldMappings.length > 0)
+      .map(conn => ({
+        id: conn._id,
+        connectionId: conn._connectionId,
+        connectionName: conn.connectionData?.name || 'Unknown Connection',
+        tableName: conn.connectionData?.tableName || 'N/A',
+        fieldCount: conn.connectionData?.fieldMappings?.length || 0,
+        lastUpdated: conn._insertedAt,
+        fields: conn.connectionData?.fieldMappings || []
+      }))
+
+    const totalConnections = await db.collection('api_metadata').countDocuments(filters)
+    const totalMappings = mappings.length
 
     return NextResponse.json({
       mappings,
       pagination: {
         page,
         limit,
-        total,
-        pages: Math.ceil(total / limit)
+        total: totalMappings,
+        pages: Math.ceil(totalConnections / limit)
       },
       filters: { connectionId }
     })

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { airflowClient } from "@/lib/airflow-client"
 import { getDb } from "@/lib/mongo"
+import { CollectionManager } from "@/lib/database-schema"
 
 export async function POST(request: Request) {
   try {
@@ -100,22 +101,26 @@ export async function GET() {
     const enrichedSchedules = await Promise.all(
       schedules.map(async (schedule) => {
         // Count total runs for this schedule
-        const totalRuns = await db.collection('api_runs').countDocuments({
+        const totalRuns = await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments({
+          type: 'run',
           scheduleId: schedule.scheduleId
         })
 
         // Get last run info
-        const lastRun = await db.collection('api_runs')
-          .find({ scheduleId: schedule.scheduleId })
-          .sort({ createdAt: -1 })
+        const lastRun = await db.collection(CollectionManager.getCollectionName('DATA'))
+          .find({ 
+            type: 'run',
+            scheduleId: schedule.scheduleId 
+          })
+          .sort({ 'runMetadata.startedAt': -1 })
           .limit(1)
           .toArray()
 
         return {
           ...schedule,
           totalRuns,
-          lastRun: lastRun[0]?.createdAt || null,
-          lastStatus: lastRun[0]?.status || 'never_run',
+          lastRun: lastRun[0]?.runMetadata?.startedAt || null,
+          lastStatus: lastRun[0]?.runMetadata?.status || 'never_run',
           nextRun: schedule.nextRun || null,
           connectionName: schedule.connectionName || `Connection ${schedule.connectionId}`,
         }

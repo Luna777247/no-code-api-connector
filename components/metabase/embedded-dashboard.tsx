@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,6 +40,9 @@ export function EmbeddedDashboard({
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // Memoize params string to avoid complex expression in useEffect dependency
+  const paramsString = useMemo(() => JSON.stringify(params || {}), [params])
 
   // Build full embed URL with parameters
   const buildEmbedUrl = (baseUrl: string, params: Record<string, any>): string => {
@@ -85,7 +88,7 @@ export function EmbeddedDashboard({
 
   useEffect(() => {
     loadReport()
-  }, [reportUrl, JSON.stringify(params)])
+  }, [reportUrl, paramsString])
 
   useEffect(() => {
     if (autoRefresh && refreshInterval > 0) {
@@ -220,7 +223,7 @@ export function EmbeddedDashboard({
               <div className="text-sm space-y-1 pt-2 border-t">
                 <p className="font-medium">Troubleshooting:</p>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                  <li>Ensure the Looker Studio report is set to "Anyone with the link can view"</li>
+                  <li>Ensure the Looker Studio report is set to &quot;Anyone with the link can view&quot;</li>
                   <li>Check if your browser blocks third-party content</li>
                   <li>Try disabling browser extensions that may block embeds</li>
                 </ul>

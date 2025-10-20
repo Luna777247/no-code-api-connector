@@ -36,7 +36,7 @@ export default function NewConnectionPage() {
     parameters: [],
     dataMapping: {
       selectedFields: [],
-      tableName: "",
+      tableName: "api_places_standardized",
     },
     schedule: {
       enabled: false,
@@ -65,16 +65,51 @@ export default function NewConnectionPage() {
   }
 
   const handleComplete = async () => {
-    // TODO: Save to database
-    console.log("[v0] Saving connection:", wizardData)
-    router.push("/connections")
+    try {
+      // Transform wizard data to connection format
+      const connectionData = {
+        connectionId: `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: wizardData.apiConfig.name || `Connection ${Date.now()}`,
+        description: wizardData.apiConfig.description,
+        apiConfig: wizardData.apiConfig,
+        parameters: wizardData.parameters,
+        fieldMappings: wizardData.dataMapping.selectedFields,
+        tableName: wizardData.dataMapping.tableName,
+        schedule: wizardData.schedule,
+        isActive: true
+      }
+
+      console.log("[v0] Saving connection:", connectionData)
+
+      // Save to database via API
+      const response = await fetch('/api/connections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(connectionData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save connection')
+      }
+
+      const savedConnection = await response.json()
+      console.log("[v0] Connection saved successfully:", savedConnection)
+
+      router.push("/connections")
+    } catch (error) {
+      console.error("[v0] Error saving connection:", error)
+      // TODO: Show error message to user
+      alert("Failed to save connection. Please try again.")
+    }
   }
 
   const progress = (currentStep / STEPS.length) * 100
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" onClick={() => router.push("/connections")} className="mb-4 gap-2">
@@ -90,7 +125,7 @@ export default function NewConnectionPage() {
           <Progress value={progress} className="h-2 mb-4" />
           <div className="flex justify-between">
             {STEPS.map((step) => (
-              <div key={step.id} className="flex flex-col items-center gap-2 flex-1">
+              <div key={step.id} className="flex flex-col items-center gap-2 flex-1 min-w-0">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                     step.id < currentStep
@@ -102,9 +137,9 @@ export default function NewConnectionPage() {
                 >
                   {step.id < currentStep ? <Check className="h-4 w-4" /> : step.id}
                 </div>
-                <div className="text-center hidden md:block">
-                  <p className="text-xs font-medium">{step.name}</p>
-                  <p className="text-xs text-muted-foreground">{step.description}</p>
+                <div className="text-center hidden sm:block max-w-full">
+                  <p className="text-xs font-medium truncate">{step.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{step.description}</p>
                 </div>
               </div>
             ))}
@@ -139,18 +174,18 @@ export default function NewConnectionPage() {
         </Card>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-6">
-          <Button variant="outline" onClick={handleBack} disabled={currentStep === 1}>
+        <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+          <Button variant="outline" onClick={handleBack} disabled={currentStep === 1} className="flex-1 sm:flex-initial">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           {currentStep < STEPS.length ? (
-            <Button onClick={handleNext}>
+            <Button onClick={handleNext} className="flex-1 sm:flex-initial">
               Next
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={handleComplete}>
+            <Button onClick={handleComplete} className="flex-1 sm:flex-initial">
               <Check className="h-4 w-4 mr-2" />
               Create Connection
             </Button>

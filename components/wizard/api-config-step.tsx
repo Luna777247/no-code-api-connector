@@ -125,20 +125,24 @@ export function ApiConfigStep({ data, onChange }: ApiConfigStepProps) {
         ) : (
           <div className="space-y-2">
             {data.headers.map((header, index) => (
-              <div key={index} className="flex gap-2">
+              <div key={index} className="flex flex-col sm:flex-row gap-2">
                 <Input
                   placeholder="Header name"
                   value={header.key}
                   onChange={(e) => updateHeader(index, "key", e.target.value)}
+                  className="flex-1"
                 />
-                <Input
-                  placeholder="Header value"
-                  value={header.value}
-                  onChange={(e) => updateHeader(index, "value", e.target.value)}
-                />
-                <Button type="button" variant="ghost" size="icon" onClick={() => removeHeader(index)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Header value"
+                    value={header.value}
+                    onChange={(e) => updateHeader(index, "value", e.target.value)}
+                    className="flex-1 min-w-0"
+                  />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeHeader(index)} className="flex-shrink-0">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
