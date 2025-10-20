@@ -55,6 +55,21 @@ export class ApiExecutor {
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => '')
+          
+          // For rate limiting (429), use longer delay before retry
+          if (response.status === 429 && attempt < this.maxRetries) {
+            const retryAfter = response.headers.get('Retry-After')
+            const delay = retryAfter ? parseInt(retryAfter) * 1000 : Math.min(this.retryDelay * Math.pow(2, attempt + 1), 30000) // Exponential backoff, max 30s
+            console.log(`[v0] Rate limited (429), retrying in ${delay}ms...`)
+            await new Promise((resolve) => setTimeout(resolve, delay))
+            continue // Skip the throw and retry
+          }
+          
+          // For client errors (4xx) except 429, don't retry
+          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+            console.log(`[v0] Client error ${response.status}, not retrying`)
+          }
+          
           throw new Error(`HTTP ${response.status}: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`)
         }
 

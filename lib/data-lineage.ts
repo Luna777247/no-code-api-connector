@@ -178,11 +178,24 @@ export class LineageTracker {
   // Save lineage to database
   private async saveLineage(lineage: DataLineage): Promise<void> {
     const db = await getDb()
-    const collection = db.collection('api_data_lineage')
+    const collection = db.collection('api_metadata')
 
     await collection.insertOne({
-      ...lineage,
-      createdAt: new Date()
+      type: 'data_lineage',
+      _connectionId: lineage.connectionId,
+      _insertedAt: new Date().toISOString(),
+      lineageData: {
+        sourceId: lineage.runId,
+        sourceType: 'workflow_run',
+        targetId: lineage.connectionId,
+        targetType: 'connection',
+        transformationSteps: lineage.edges.map(edge => ({
+          type: edge.type,
+          timestamp: edge.timestamp,
+          metadata: edge.metadata
+        })),
+        createdAt: lineage.timestamp.toISOString()
+      }
     })
   }
 
@@ -190,10 +203,34 @@ export class LineageTracker {
   static async getLineage(runId: string): Promise<DataLineage | null> {
     try {
       const db = await getDb()
-      const collection = db.collection('api_data_lineage')
+      const collection = db.collection('api_metadata')
 
-      const lineage = await collection.findOne({ runId })
-      return lineage as DataLineage | null
+      const lineageDoc = await collection.findOne({ 
+        type: 'data_lineage',
+        'lineageData.sourceId': runId 
+      })
+      
+      if (!lineageDoc) return null
+      
+      // Transform back to DataLineage format
+      return {
+        runId,
+        connectionId: lineageDoc.lineageData.targetId,
+        timestamp: new Date(lineageDoc.lineageData.createdAt),
+        nodes: [], // Would need to reconstruct from edges
+        edges: lineageDoc.lineageData.transformationSteps.map((step: any) => ({
+          from: '', // Would need to reconstruct
+          to: '',
+          type: step.type,
+          timestamp: new Date(step.timestamp),
+          metadata: step.metadata
+        })),
+        metadata: {
+          startTime: new Date(lineageDoc.lineageData.createdAt),
+          status: 'completed',
+          recordCount: 0
+        }
+      } as DataLineage
     } catch (error) {
       console.error('[v0] Error fetching lineage:', error)
       return null

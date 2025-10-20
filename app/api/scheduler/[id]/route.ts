@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getDb } from "@/lib/mongo"
+import { CollectionManager } from "@/lib/database-schema"
 
 // GET /api/scheduler/:id - Lấy chi tiết schedule
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -102,9 +103,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Check if there are active runs
-    const activeRuns = await db.collection('api_runs').countDocuments({ 
+    const activeRuns = await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments({ 
+      type: 'run',
       scheduleId: scheduleId,
-      status: 'running' 
+      'runMetadata.status': 'running' 
     })
 
     if (activeRuns > 0) {
@@ -123,7 +125,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Get count of historical runs for this schedule
-    const historicalRuns = await db.collection('api_runs').countDocuments({ 
+    const historicalRuns = await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments({ 
+      type: 'run',
       scheduleId: scheduleId 
     })
 

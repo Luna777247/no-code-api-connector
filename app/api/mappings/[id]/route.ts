@@ -99,7 +99,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const db = await getDb()
-    const result = await db.collection('api_field_mappings').updateOne(
+    const _result = await db.collection('api_field_mappings').updateOne(
       { mappingId: mappingId },
       { 
         $set: {

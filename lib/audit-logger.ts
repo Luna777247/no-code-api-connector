@@ -69,12 +69,21 @@ export class AuditLogger {
   static async log(entry: Omit<AuditEntry, 'id' | 'timestamp'>): Promise<void> {
     try {
       const db = await getDb()
-      const collection = db.collection('api_audit_logs')
+      const collection = db.collection('api_metadata')
 
-      const auditEntry: AuditEntry = {
-        id: Math.random().toString(36).substr(2, 16),
-        timestamp: new Date(),
-        ...entry
+      const auditEntry = {
+        type: 'audit_log' as const,
+        _connectionId: entry.resource.id, // Add partition key for connections
+        _insertedAt: new Date().toISOString(),
+        auditData: {
+          action: entry.action,
+          userId: entry.userId,
+          resourceId: entry.resource.id,
+          resourceType: entry.resource.type,
+          details: entry.details,
+          ipAddress: entry.ipAddress,
+          userAgent: entry.userAgent
+        }
       }
 
       await collection.insertOne(auditEntry)

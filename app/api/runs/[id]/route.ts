@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getDb } from "@/lib/mongo"
+import { CollectionManager } from "@/lib/database-schema"
 
 // GET /api/runs/:id - Lấy chi tiết run cụ thể
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +10,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     console.log("[v0] Fetching run:", runId)
 
     const db = await getDb()
-    const run = await db.collection('api_runs').findOne({ runId: runId })
+    const run = await db.collection(CollectionManager.getCollectionName('DATA')).findOne({ 
+      type: 'run', 
+      runId: runId 
+    })
 
     if (!run) {
       // Mock data for development
@@ -62,13 +66,16 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const db = await getDb()
     
     // Check if run exists
-    const run = await db.collection('api_runs').findOne({ runId: runId })
+    const run = await db.collection(CollectionManager.getCollectionName('DATA')).findOne({ 
+      type: 'run', 
+      runId: runId 
+    })
     if (!run) {
       return NextResponse.json({ error: "Run not found" }, { status: 404 })
     }
 
     // Check if run is still active/running
-    if (run.status === 'running') {
+    if (run.runMetadata?.status === 'running') {
       return NextResponse.json({ 
         error: "Cannot delete running process. Stop the run first." 
       }, { status: 400 })
@@ -76,17 +83,23 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     // Delete run and related data
     const deletePromises = [
-      // Delete main run record
-      db.collection('api_runs').deleteOne({ runId: runId }),
+      // Delete main run record from api_data collection
+      db.collection(CollectionManager.getCollectionName('DATA')).deleteOne({ 
+        type: 'run', 
+        runId: runId 
+      }),
       
-      // Delete run logs
-      db.collection('api_run_logs').deleteMany({ runId: runId }),
+      // Delete related transformed data from this run
+      db.collection(CollectionManager.getCollectionName('DATA')).deleteMany({ 
+        type: 'transformed_data', 
+        runId: runId 
+      }),
       
-      // Delete raw data from this run (optional - might want to keep for auditing)
-      // db.collection('api_data_raw').deleteMany({ runId: runId }),
-      
-      // Delete transformed data from this run (optional)
-      // db.collection('api_data_transformed').deleteMany({ runId: runId })
+      // Delete related places data from this run
+      db.collection(CollectionManager.getCollectionName('DATA')).deleteMany({ 
+        type: 'places_standardized', 
+        runId: runId 
+      })
     ]
 
     const results = await Promise.all(deletePromises)
@@ -97,7 +110,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       runId: runId,
       deletedRecords: {
         runs: results[0].deletedCount,
-        logs: results[1].deletedCount
+        transformedData: results[1].deletedCount,
+        placesData: results[2].deletedCount
       }
     })
   } catch (error) {

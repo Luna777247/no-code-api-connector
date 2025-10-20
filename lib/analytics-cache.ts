@@ -3,6 +3,8 @@
  * Provides Redis-based caching for analytics API endpoints to improve Metabase performance
  */
 
+import Redis from 'ioredis';
+
 interface CacheOptions {
   ttl?: number; // Time to live in seconds
   prefix?: string; // Cache key prefix
@@ -39,7 +41,6 @@ let redis: any;
 try {
   if (process.env.REDIS_URL || process.env.NODE_ENV === 'production') {
     // Use real Redis in production or when REDIS_URL is available
-    const Redis = require('ioredis');
     redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6380');
     console.log('[v0] Connected to Redis for analytics caching');
   } else {
@@ -112,7 +113,9 @@ export const CacheKeys = {
   CONNECTIONS_PERFORMANCE: 'connections:performance',
   SCHEDULES_STATUS: 'schedules:status',
   SCHEDULES_PERFORMANCE: 'schedules:performance',
-  SYSTEM_METRICS: 'system:metrics'
+  SYSTEM_METRICS: 'system:metrics',
+  SYSTEM_STATUS: 'system:status',
+  SUCCESS_RATE_HISTORY: 'success_rate:history'
 } as const;
 
 /**

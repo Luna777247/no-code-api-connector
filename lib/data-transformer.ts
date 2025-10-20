@@ -28,7 +28,31 @@ export class DataTransformer {
     // Remove leading $ if present
     const cleanPath = path.startsWith("$.") ? path.substring(2) : path
 
-    const keys = cleanPath.split(".")
+    // Handle array notation [*]
+    if (cleanPath.includes('[*]')) {
+      const [arrayPath, fieldPath] = cleanPath.split('[*].')
+      const arrayValue = this.getValueByPath(obj, arrayPath)
+
+      if (Array.isArray(arrayValue) && arrayValue.length > 0) {
+        if (fieldPath) {
+          // Extract field from all array items and join with comma
+          const extractedValues = arrayValue
+            .map(item => this.getValueByPath(item, fieldPath))
+            .filter(val => val !== null && val !== undefined)
+          return extractedValues.join(',')
+        }
+        // Return first item for single value extraction
+        return arrayValue[0]
+      }
+      return null
+    }
+
+    // Regular path traversal
+    return this.getValueByPath(obj, cleanPath)
+  }
+
+  private getValueByPath(obj: any, path: string): any {
+    const keys = path.split(".")
     let value = obj
 
     for (const key of keys) {

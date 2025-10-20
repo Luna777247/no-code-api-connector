@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDb } from "@/lib/mongo"
+import { CollectionManager } from "@/lib/database-schema"
 
 // GET /api/data - Retrieve and analyze data from recent runs
 export async function GET(request: NextRequest) {
@@ -20,22 +21,26 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     switch (timeRange) {
       case "1h":
-        timeFilter = { startedAt: { $gte: new Date(now.getTime() - 60 * 60 * 1000) } }
+        timeFilter = { $expr: { $gte: [{ $dateFromString: { dateString: "$runMetadata.startedAt" } }, new Date(now.getTime() - 60 * 60 * 1000)] } }
         break
       case "24h":
-        timeFilter = { startedAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } }
+        timeFilter = { $expr: { $gte: [{ $dateFromString: { dateString: "$runMetadata.startedAt" } }, new Date(now.getTime() - 24 * 60 * 60 * 1000)] } }
         break
       case "7d":
-        timeFilter = { startedAt: { $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } }
+        timeFilter = { $expr: { $gte: [{ $dateFromString: { dateString: "$runMetadata.startedAt" } }, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)] } }
         break
       case "30d":
-        timeFilter = { startedAt: { $gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } }
+        timeFilter = { $expr: { $gte: [{ $dateFromString: { dateString: "$runMetadata.startedAt" } }, new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)] } }
         break
+      default:
+        // No time filter for "all" or invalid range
+        timeFilter = {}
     }
 
     // Build query filter
     const filter: any = {
-      status: "success", // Only successful runs have data
+      type: 'run',
+      'runMetadata.status': "success", // Only successful runs have data
       ...timeFilter
     }
 
@@ -44,27 +49,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Get runs with data
-    const runsWithData = await db.collection('api_runs')
+    const runsWithData = await db.collection(CollectionManager.getCollectionName('DATA'))
       .find(filter, {
         projection: {
           _id: 1,
           connectionId: 1,
-          startedAt: 1,
-          completedAt: 1,
-          status: 1,
-          recordsProcessed: 1,
+          'runMetadata.startedAt': 1,
+          'runMetadata.completedAt': 1,
+          'runMetadata.status': 1,
+          'runMetadata.recordsExtracted': 1,
           dataPreview: 1,
-          transformedData: 1,
-          executionTime: 1
+          data: 1,
+          'runMetadata.duration': 1
         }
       })
-      .sort({ startedAt: -1 })
+      .sort({ 'runMetadata.startedAt': -1 })
       .skip(skip)
       .limit(limit)
       .toArray()
 
     // Get total count for pagination
-    const totalRuns = await db.collection('api_runs').countDocuments(filter)
+    const totalRuns = await db.collection(CollectionManager.getCollectionName('DATA')).countDocuments(filter)
 
     // Process and structure the data
     const processedData = []
@@ -75,10 +80,10 @@ export async function GET(request: NextRequest) {
       const runData: any = {
         runId: run._id,
         connectionId: run.connectionId,
-        timestamp: run.startedAt,
-        executionTime: run.executionTime || 0,
-        recordsProcessed: run.recordsProcessed || 0,
-        status: run.status
+        timestamp: run.runMetadata?.startedAt,
+        executionTime: run.runMetadata?.duration || 0,
+        recordsProcessed: run.runMetadata?.recordsExtracted || 0,
+        status: run.runMetadata?.status
       }
 
       // Include data preview if available
@@ -89,43 +94,43 @@ export async function GET(request: NextRequest) {
       }
 
       // Include transformed data if format is detailed
-      if (format === "detailed" && run.transformedData) {
-        runData.transformedData = Array.isArray(run.transformedData)
-          ? run.transformedData.slice(0, 10) // Limit to 10 records for detailed view
-          : run.transformedData
+      if (format === "detailed" && run.data) {
+        runData.transformedData = Array.isArray(run.data)
+          ? run.data.slice(0, 10) // Limit to 10 records for detailed view
+          : run.data
       }
 
       processedData.push(runData)
-      totalRecords += run.recordsProcessed || 0
-      totalDataSize += JSON.stringify(run.transformedData || {}).length
+      totalRecords += run.runMetadata?.recordsExtracted || 0
+      totalDataSize += JSON.stringify(run.data || {}).length
     }
 
     // Get data statistics
-    const dataStats = await db.collection('api_runs').aggregate([
+    const dataStats = await db.collection(CollectionManager.getCollectionName('DATA')).aggregate([
       { $match: filter },
       {
         $group: {
           _id: null,
           totalRuns: { $sum: 1 },
-          totalRecords: { $sum: "$recordsProcessed" },
-          avgExecutionTime: { $avg: "$executionTime" },
-          avgRecordsPerRun: { $avg: "$recordsProcessed" },
-          minExecutionTime: { $min: "$executionTime" },
-          maxExecutionTime: { $max: "$executionTime" }
+          totalRecords: { $sum: "$runMetadata.recordsExtracted" },
+          avgExecutionTime: { $avg: "$runMetadata.duration" },
+          avgRecordsPerRun: { $avg: "$runMetadata.recordsExtracted" },
+          minExecutionTime: { $min: "$runMetadata.duration" },
+          maxExecutionTime: { $max: "$runMetadata.duration" }
         }
       }
     ]).toArray()
 
     // Get connection breakdown
-    const connectionBreakdown = await db.collection('api_runs').aggregate([
+    const connectionBreakdown = await db.collection(CollectionManager.getCollectionName('DATA')).aggregate([
       { $match: filter },
       {
         $group: {
           _id: "$connectionId",
           runCount: { $sum: 1 },
-          totalRecords: { $sum: "$recordsProcessed" },
-          avgExecutionTime: { $avg: "$executionTime" },
-          lastRun: { $max: "$startedAt" }
+          totalRecords: { $sum: "$runMetadata.recordsExtracted" },
+          avgExecutionTime: { $avg: "$runMetadata.duration" },
+          lastRun: { $max: "$runMetadata.startedAt" }
         }
       },
       { $sort: { runCount: -1 } },

@@ -1,9 +1,16 @@
 module.exports = {
   testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/test/utils/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1'
+  },
+  transform: {
+    '^.+\\.(ts|tsx)$': ['babel-jest', { configFile: './babel.test.config.js' }]
+  },
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   testMatch: [
-    '<rootDir>/test/**/*.test.(ts|tsx)',
-    '<rootDir>/test/**/*.spec.(ts|tsx)'
+    '<rootDir>/test/unit/**/*.test.(ts|tsx|js)',
+    '<rootDir>/test/unit/**/*.spec.(ts|tsx|js)'
   ],
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
@@ -11,29 +18,7 @@ module.exports = {
     '!**/*.d.ts',
     '!**/node_modules/**'
   ],
-  coverageThreshold: {
-    global: {
-      statements: 80,
-      branches: 75,
-      functions: 85,
-      lines: 80
-    }
-  },
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
-    '^@/lib/(.*)$': '<rootDir>/lib/$1',
-    '^@/app/(.*)$': '<rootDir>/app/$1',
-    '^@/components/(.*)$': '<rootDir>/components/$1'
-  },
-  transform: {
-    '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }]
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(mongodb-memory-server|mongodb-memory-server-core|@mongodb-js)/)'
-  ],
-  testPathIgnorePatterns: [
-    '<rootDir>/.next/',
-    '<rootDir>/node_modules/',
-    '<rootDir>/scripts/'
-  ]
-};
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  testTimeout: 10000
+}

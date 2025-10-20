@@ -50,6 +50,14 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
   const [runs, setRuns] = useState<Run[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{
+    success: boolean
+    message: string
+    status?: number
+    statusText?: string
+    timestamp: Date
+  } | null>(null)
+  const [testingConnection, setTestingConnection] = useState(false)
 
   useEffect(() => {
     async function fetchConnectionDetails() {
@@ -84,10 +92,13 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
     }
 
     fetchConnectionDetails()
-  }, [])
+  }, [params])
 
   const handleTestConnection = async () => {
     if (!connection) return
+    
+    setTestingConnection(true)
+    setTestResult(null) // Clear previous result
     
     try {
       const testData = {
@@ -105,13 +116,22 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
       })
 
       const result = await response.json()
-      if (result.success) {
-        alert('Connection test successful!')
-      } else {
-        alert(`Connection test failed: ${result.error}`)
-      }
+      
+      setTestResult({
+        success: result.success,
+        message: result.success ? result.message : result.error,
+        status: result.status,
+        statusText: result.statusText,
+        timestamp: new Date()
+      })
     } catch (error) {
-      alert('Test failed: ' + error)
+      setTestResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Test failed: Unknown error',
+        timestamp: new Date()
+      })
+    } finally {
+      setTestingConnection(false)
     }
   }
 
@@ -179,7 +199,7 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
             <CardHeader>
               <CardTitle className="text-destructive">Connection Not Found</CardTitle>
               <CardDescription>
-                The connection you're looking for doesn't exist or has been deleted.
+                The connection you&apos;re looking for doesn&apos;t exist or has been deleted.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -217,9 +237,14 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
               variant="outline" 
               size="sm"
               onClick={handleTestConnection}
+              disabled={testingConnection}
             >
-              <Activity className="h-4 w-4 mr-2" />
-              Test Connection
+              {testingConnection ? (
+                <Clock className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Activity className="h-4 w-4 mr-2" />
+              )}
+              {testingConnection ? 'Testing...' : 'Test Connection'}
             </Button>
             <Button 
               size="sm"
@@ -237,6 +262,39 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
             </Link>
           </div>
         </div>
+
+        {/* Test Result */}
+        {testResult && (
+          <Card className={`border ${testResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                {testResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`font-medium ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                      Connection Test {testResult.success ? 'Successful' : 'Failed'}
+                    </h3>
+                    <span className="text-xs text-muted-foreground">
+                      {testResult.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className={`text-sm mt-1 ${testResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                    {testResult.message}
+                  </p>
+                  {testResult.status && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      HTTP {testResult.status} {testResult.statusText}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Connection Details */}
@@ -365,7 +423,7 @@ export default function ConnectionDetailPage({ params }: { params: Promise<{ id:
                   <div className="text-center py-8 text-muted-foreground">
                     <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No runs yet</p>
-                    <p className="text-sm">Click "Run Now" to execute this connection</p>
+                    <p className="text-sm">Click &quot;Run Now&quot; to execute this connection</p>
                   </div>
                 )}
               </CardContent>

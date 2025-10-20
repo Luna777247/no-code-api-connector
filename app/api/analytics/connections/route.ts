@@ -20,14 +20,14 @@ export async function GET(request: Request) {
 
     // Determine grouping format based on period
     let dateFormat = "%Y-%m-%d"
-    let groupByPeriod = "day"
+    let _groupByPeriod = "day"
     
     if (period === 'hourly') {
       dateFormat = "%Y-%m-%d %H:00"
-      groupByPeriod = "hour"
+      _groupByPeriod = "hour"
     } else if (period === 'weekly') {
       dateFormat = "%Y-W%U" 
-      groupByPeriod = "week"
+      _groupByPeriod = "week"
     }
 
     // Aggregation pipeline for connection performance metrics

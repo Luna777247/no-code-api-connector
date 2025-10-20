@@ -5,8 +5,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Database, Calendar, Activity, Clock, XCircle } from "lucide-react"
-import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+import { Plus, Database, Calendar, Activity, Clock, XCircle, Trash2 } from "lucide-react"
+import { PageLayout } from "@/components/ui/page-layout"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface Connection {
   id: string
@@ -25,6 +27,8 @@ export default function ConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteWithData, setDeleteWithData] = useState(false)
 
   useEffect(() => {
     console.log('[v0] Fetching connections from API...')
@@ -42,25 +46,56 @@ export default function ConnectionsPage() {
       })
   }, [])
 
+  const deleteConnection = async (connectionId: string, deleteData: boolean = false) => {
+    setDeletingId(connectionId)
+    try {
+      console.log('[v0] Deleting connection:', connectionId, { deleteData })
+      const response = await fetch(`/api/connections/${connectionId}?deleteData=${deleteData}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete connection'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // If we can't parse the error response, use the status text
+          errorMessage = response.statusText || errorMessage
+        }
+        throw new Error(`${errorMessage} (${response.status})`)
+      }
+
+      const result = await response.json()
+      console.log('[v0] Connection deleted successfully:', result)
+
+      // Remove the connection from the local state
+      setConnections(connections.filter(conn => conn.id !== connectionId))
+      
+      // Reset delete with data option
+      setDeleteWithData(false)
+    } catch (error) {
+      console.error('[v0] Error deleting connection:', error)
+      setError(error instanceof Error ? error.message : 'Failed to delete connection')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <BackToHomeButton />
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">API Connections</h1>
-              <p className="text-muted-foreground mt-1">Manage your API integrations and configurations</p>
-            </div>
-          </div>
-          <Link href="/connections/new">
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Connection
-            </Button>
-          </Link>
-        </div>
+    <PageLayout
+      title="API Connections"
+      description="Manage your API integrations and configurations"
+      showBackButton={true}
+      headerActions={
+        <Link href="/connections/new">
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Connection
+          </Button>
+        </Link>
+      }
+    >
 
         {/* Connections List */}
         {loading ? (
@@ -117,11 +152,72 @@ export default function ConnectionsPage() {
                           ID: {connection.connectionId}
                         </p>
                       </div>
-                      <Link href={`/connections/${connection.connectionId || connection.id}`}>
-                        <Button variant="outline" size="sm">
-                          Configure
-                        </Button>
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/connections/${connection.connectionId || connection.id}`}>
+                          <Button variant="outline" size="sm">
+                            Configure
+                          </Button>
+                        </Link>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-destructive hover:text-destructive"
+                              disabled={deletingId === connection.id}
+                            >
+                              {deletingId === connection.id ? (
+                                <Clock className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Connection</AlertDialogTitle>
+                              <AlertDialogDescription asChild>
+                                <div className="space-y-3">
+                                  <span>Are you sure you want to delete &ldquo;{connection.name}&rdquo;?</span>
+                                  
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox 
+                                      id={`delete-data-${connection.id}`}
+                                      checked={deleteWithData}
+                                      onCheckedChange={(checked) => setDeleteWithData(checked as boolean)}
+                                    />
+                                    <label 
+                                      htmlFor={`delete-data-${connection.id}`}
+                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                      Also delete all collected data ({connection.totalRuns} runs)
+                                    </label>
+                                  </div>
+                                  
+                                  {deleteWithData ? (
+                                    <span className="text-sm text-destructive">
+                                      ⚠️ Warning: This will permanently delete all data collected by this connection. This action cannot be undone.
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">
+                                      Note: Connection configuration will be deleted, but collected data will remain in the database.
+                                    </span>
+                                  )}
+                                </div>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => setDeleteWithData(false)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteConnection(connection.id, deleteWithData)}
+                                  className="bg-destructive hover:bg-destructive/90 text-black"
+                                >
+                                  {deleteWithData ? 'Delete Connection & Data' : 'Delete Connection'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -153,7 +249,6 @@ export default function ConnectionsPage() {
             })}
           </div>
         )}
-      </div>
-    </div>
+    </PageLayout>
   )
 }

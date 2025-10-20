@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PlayCircle, Clock, CheckCircle2, XCircle, AlertCircle, Search, Filter, Eye } from "lucide-react"
-import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+import { PageLayout } from "@/components/ui/page-layout"
 
 interface Run {
-  _id: string
+  id: string
   connectionId: string
   status: string
   startedAt: string
@@ -78,16 +78,11 @@ export default function RunsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <BackToHomeButton />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Run History</h1>
-          <p className="text-muted-foreground mt-1">View and monitor API execution history</p>
-        </div>
+    <PageLayout
+      title="Run History"
+      description="View and monitor API execution history"
+      showBackButton={true}
+    >
 
         {/* Filters */}
         <Card className="mb-6">
@@ -164,7 +159,7 @@ export default function RunsPage() {
               const completedDate = run.completedAt ? new Date(run.completedAt) : null
               
               return (
-                <Card key={run._id}>
+                <Card key={run.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -187,7 +182,7 @@ export default function RunsPage() {
                           </p>
                         )}
                       </div>
-                      <Link href={`/runs/${run._id}`}>
+                      <Link href={`/runs/${run.id}`}>
                         <Button variant="outline" size="sm" className="gap-2 bg-transparent">
                           <Eye className="h-4 w-4" />
                           View Details
@@ -235,7 +230,6 @@ export default function RunsPage() {
             })}
           </div>
         )}
-      </div>
-    </div>
+    </PageLayout>
   )
 }

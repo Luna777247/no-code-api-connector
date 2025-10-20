@@ -7,7 +7,7 @@ export async function getDb(): Promise<Db> {
   if (dbInstance) return dbInstance
 
   const uri = process.env.MONGODB_URI
-  const dbName = process.env.MONGODB_DB || "smart_travel_v2"
+  const dbName = process.env.MONGODB_DB || "dataplatform_db"
 
   if (!uri) throw new Error("MONGODB_URI is not set")
 

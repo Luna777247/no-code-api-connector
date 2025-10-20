@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Database, Search, Download, Filter, Clock, XCircle } from "lucide-react"
-import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+import { PageLayout } from "@/components/ui/page-layout"
 
 interface DataResponse {
   summary: {
@@ -54,16 +54,11 @@ export default function DataPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <BackToHomeButton />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Data Explorer</h1>
-          <p className="text-muted-foreground mt-1">Browse and export extracted data</p>
-        </div>
+    <PageLayout
+      title="Data Explorer"
+      description="Browse and export extracted data"
+      showBackButton={true}
+    >
 
         {/* Filters */}
         <Card className="mb-6">
@@ -174,7 +169,6 @@ export default function DataPage() {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </PageLayout>
   )
 }
