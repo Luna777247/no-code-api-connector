@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-10-19T20:24:53.458Z",
+  "totalDuration": 1849,
+  "summary": {
+    "total": 5,
+    "passed": 1,
+    "failed": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "results": {
+    "unit": {
+      "status": "passed",
+      "duration": 1845,
+      "output": "PASS test/unit/lib/data-transformer.test.ts\n  DataTransformer\n    transform\n      √ should transform simple JSONPath (2 ms)\n      √ should handle array notation (1 ms)\n      √ should handle missing data gracefully (1 ms)\n    validateSchema\n      √ should validate correct data types\n      √ should reject invalid data types (1 ms)\n\nTest Suites: 1 passed, 1 total\nTests:       5 passed, 5 total\nSnapshots:   0 total\nTime:        0.876 s, estimated 1 s\nRan all test suites matching test/unit.\n"
+    },
+    "api": {
+      "status": "pending",
+      "duration": 0,
+      "output": ""
+    },
+    "integration": {
+      "status": "pending",
+      "duration": 0,
+      "output": ""
+    },
+    "e2e": {
+      "status": "pending",
+      "duration": 0,
+      "output": ""
+    },
+    "performance": {
+      "status": "pending",
+      "duration": 0,
+      "output": ""
+    }
+  }
+}
