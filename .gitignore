@@ -25,3 +25,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+frontend_php/node_modules/
+.next/
+frontend_php/.next/
+out/
+dist/
+build/
+coverage/
+.env
+.env.*
+.env*
+
+# nếu dùng monorepo / tools khác
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+/node_modules
+frontend_php/node_modules/
+backend_php/node_modules/

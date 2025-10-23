@@ -30,7 +30,8 @@ export function SystemStats() {
   useEffect(() => {
     async function fetchStatus() {
       try {
-        const response = await fetch('/api/status')
+        const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+        const response = await fetch(`${base}/api/status`)
         if (response.ok) {
           const data = await response.json()
           setStatus(data)
