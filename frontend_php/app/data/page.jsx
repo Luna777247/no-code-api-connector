@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button.js"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js"
+import { Input } from "@/components/ui/input.js"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.js"
+import { Badge } from "@/components/ui/badge.js"
 import { Database, Search, Download, Filter, Clock, XCircle } from "lucide-react"
-import { PageLayout } from "@/components/ui/page-layout"
+import { PageLayout } from "@/components/ui/page-layout.js"
 import apiClient from "../../services/apiClient.js"
 
 export default function DataPage() {

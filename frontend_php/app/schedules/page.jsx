@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button.js"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js"
+import { Badge } from "@/components/ui/badge.js"
 import { Calendar, Clock, Play, Pause, Trash2, MoreVertical, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
@@ -12,8 +12,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { PageLayout } from "@/components/ui/page-layout"
+} from "@/components/ui/dropdown-menu.js"
+import { PageLayout } from "@/components/ui/page-layout.js"
 import apiClient from "../../services/apiClient.js"
 
 export default function SchedulesPage() {

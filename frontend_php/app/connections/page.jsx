@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button.js"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js"
+import { Badge } from "@/components/ui/badge.js"
 import { Plus, Database, Calendar, Activity, Clock, XCircle, Trash2 } from "lucide-react"
-import { PageLayout } from "@/components/ui/page-layout"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Checkbox } from "@/components/ui/checkbox"
+import { PageLayout } from "@/components/ui/page-layout.js"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog.js"
+import { Checkbox } from "@/components/ui/checkbox.js"
 import apiClient from "../../services/apiClient.js"
 
 export default function ConnectionsPage() {

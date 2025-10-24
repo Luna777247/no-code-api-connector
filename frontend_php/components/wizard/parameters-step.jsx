@@ -253,7 +253,7 @@ export function ParametersStep({ data, onChange }) {
                       onChange={(e) => setEditingParam({ ...editingParam, template: e.target.value })}
                       className="mt-1.5 font-mono"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Use {{`{{variable}}`}} syntax for dynamic values</p>
+                    <p className="text-xs text-muted-foreground mt-1">Use {'{{variable}}'} syntax for dynamic values</p>
                   </div>
                 </TabsContent>
 

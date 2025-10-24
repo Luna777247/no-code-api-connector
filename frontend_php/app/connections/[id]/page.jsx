@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button.js"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js"
+import { Badge } from "@/components/ui/badge.js"
+import { Separator } from "@/components/ui/separator.js"
 import { 
   ArrowLeft, 
   Play, 
@@ -19,7 +19,7 @@ import {
   ExternalLink,
   Edit
 } from "lucide-react"
-import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button.js"
 import apiClient from "../../../services/apiClient.js"
 
 export default function ConnectionDetailPage() {

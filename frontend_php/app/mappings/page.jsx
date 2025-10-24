@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button.js"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js"
+import { Badge } from "@/components/ui/badge.js"
 import { Settings, Database, ArrowRight } from "lucide-react"
-import { PageLayout } from "@/components/ui/page-layout"
+import { PageLayout } from "@/components/ui/page-layout.js"
 import apiClient from "../../services/apiClient.js"
 
 export default function MappingsPage() {

@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button.js"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js"
+import { Progress } from "@/components/ui/progress.js"
 import { ArrowLeft, ArrowRight, Check } from "lucide-react"
 import { ApiConfigStep } from "@/components/wizard/api-config-step"
 import { ParametersStep } from "@/components/wizard/parameters-step"
