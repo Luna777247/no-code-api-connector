@@ -1,0 +1,27 @@
+{
+  "type": "full",
+  "timestamp": "2025-10-19T09:53:47.806Z",
+  "database": "dataplatform_db",
+  "collections": [
+    "api_data",
+    "api_uploads",
+    "api_metadata"
+  ],
+  "stats": {
+    "db": "dataplatform_db",
+    "collections": 3,
+    "views": 0,
+    "objects": 10,
+    "avgObjSize": 3895,
+    "dataSize": 38950,
+    "storageSize": 147456,
+    "totalFreeStorageSize": 0,
+    "numExtents": 0,
+    "indexes": 16,
+    "indexSize": 339968,
+    "indexFreeStorageSize": 0,
+    "fileSize": 0,
+    "nsSizeMB": 0,
+    "ok": 1
+  }
+}

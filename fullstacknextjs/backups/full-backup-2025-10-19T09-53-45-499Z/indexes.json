@@ -1,0 +1,136 @@
+{
+  "api_data": [
+    {
+      "v": 2,
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_"
+    },
+    {
+      "v": 2,
+      "key": {
+        "type": 1,
+        "connectionId": 1,
+        "_insertedAt": -1
+      },
+      "name": "type_1_connectionId_1__insertedAt_-1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "_insertedAt": -1
+      },
+      "name": "_insertedAt_-1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "runMetadata.status": 1
+      },
+      "name": "runMetadata.status_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "type": 1,
+        "connectionId": 1
+      },
+      "name": "type_connection",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "_insertedAt": 1
+      },
+      "name": "inserted_at",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "runMetadata.status": 1,
+        "runMetadata.startedAt": -1
+      },
+      "name": "run_status_time",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "connectionId": 1,
+        "_insertedAt": -1
+      },
+      "name": "connection_recent",
+      "background": true
+    }
+  ],
+  "api_uploads": [
+    {
+      "v": 2,
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_"
+    },
+    {
+      "v": 2,
+      "key": {
+        "connectionId": 1
+      },
+      "name": "upload_connection",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "uploadStatus": 1,
+        "_insertedAt": -1
+      },
+      "name": "upload_status_time",
+      "background": true
+    }
+  ],
+  "api_metadata": [
+    {
+      "v": 2,
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_"
+    },
+    {
+      "v": 2,
+      "key": {
+        "type": 1,
+        "connectionId": 1
+      },
+      "name": "type_1_connectionId_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "type": 1,
+        "scheduleId": 1
+      },
+      "name": "type_1_scheduleId_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "type": 1
+      },
+      "name": "metadata_type",
+      "background": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "_insertedAt": 1
+      },
+      "name": "metadata_inserted",
+      "background": true
+    }
+  ]
+}
