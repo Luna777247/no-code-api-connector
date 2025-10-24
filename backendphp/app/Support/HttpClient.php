@@ -10,8 +10,24 @@ class HttpClient
 
         $normalizedHeaders = [];
         foreach ($headers as $k => $v) {
-            if (is_int($k)) { $normalizedHeaders[] = $v; continue; }
-            $normalizedHeaders[] = $k . ': ' . $v;
+            if (is_int($k)) {
+                if (is_array($v)) {
+                    $name = $v['name'] ?? $v['key'] ?? null;
+                    $value = $v['value'] ?? $v['val'] ?? null;
+                    if (is_string($name) && $name !== '' && $value !== null) {
+                        $normalizedHeaders[] = trim($name) . ': ' . trim((string)$value);
+                        continue;
+                    }
+                }
+                if (is_string($v)) {
+                    $trimmed = trim($v);
+                    if ($trimmed !== '') { $normalizedHeaders[] = $trimmed; }
+                }
+                continue;
+            }
+            if (is_string($k)) {
+                $normalizedHeaders[] = trim($k) . ': ' . trim((string)$v);
+            }
         }
 
         curl_setopt_array($ch, [
