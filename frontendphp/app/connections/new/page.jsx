@@ -154,6 +154,7 @@ export default function NewConnectionPage() {
               <DataMappingStep
                 data={wizardData.dataMapping}
                 apiConfig={wizardData.apiConfig}
+                parameters={wizardData.parameters}
                 onChange={(data) => updateWizardData('dataMapping', data)}
               />
             )}
