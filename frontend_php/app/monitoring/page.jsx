@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js"
+import { Badge } from "@/components/ui/badge.js"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.js"
+import { ScrollArea } from "@/components/ui/scroll-area.js"
+import { Input } from "@/components/ui/input.js"
 import {
   Activity,
   TrendingUp,
@@ -21,7 +21,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+import { BackToHomeButton } from "@/components/ui/back-to-home-button.js"
 import apiClient from "../../services/apiClient.js"
 
 export default function MonitoringPage() {

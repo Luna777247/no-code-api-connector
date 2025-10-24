@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { BackToHomeButton } from "@/components/ui/back-to-home-button"
 
 const EmbeddedDashboard = dynamic(
-  () => import('@/components/metabase/embedded-dashboard').then(mod => ({ default: mod.EmbeddedDashboard })),
+  () => import('@/components/dashboard/embedded-dashboard').then(mod => ({ default: mod.EmbeddedDashboard })),
   { 
     ssr: false,
     loading: () => (

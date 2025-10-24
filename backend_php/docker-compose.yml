@@ -1,0 +1,62 @@
+services:
+  postgresql:
+    image: bitnami/postgresql:16
+    volumes:
+      - 'postgresql_data:/bitnami/postgresql'
+    environment:
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - ALLOW_EMPTY_PASSWORD=${ALLOW_EMPTY_PASSWORD}
+
+  redis:
+    image: bitnami/redis:7.0
+    volumes:
+      - 'redis_data:/bitnami/redis/data'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=${REDIS_ALLOW_EMPTY_PASSWORD}
+
+  airflow-scheduler:
+    image: bitnami/airflow-scheduler:2.9.1
+    volumes:
+      - './dags:/opt/bitnami/airflow/dags'
+    environment:
+      - AIRFLOW_SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW_DATABASE_NAME=${AIRFLOW_DATABASE_NAME}
+      - AIRFLOW_DATABASE_USERNAME=${AIRFLOW_DATABASE_USERNAME}
+      - AIRFLOW_DATABASE_PASSWORD=${AIRFLOW_DATABASE_PASSWORD}
+      - AIRFLOW_EXECUTOR=${AIRFLOW_EXECUTOR}
+      - AIRFLOW_WEBSERVER_HOST=${AIRFLOW_WEBSERVER_HOST}
+      - AIRFLOW_LOAD_EXAMPLES=${AIRFLOW_LOAD_EXAMPLES}
+
+  airflow-worker:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - './dags:/opt/bitnami/airflow/dags'
+      - './:/opt/bitnami/airflow/project'
+    environment:
+      - AIRFLOW_SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW_DATABASE_NAME=${AIRFLOW_DATABASE_NAME}
+      - AIRFLOW_DATABASE_USERNAME=${AIRFLOW_DATABASE_USERNAME}
+      - AIRFLOW_DATABASE_PASSWORD=${AIRFLOW_DATABASE_PASSWORD}
+      - AIRFLOW_EXECUTOR=${AIRFLOW_EXECUTOR}
+      - AIRFLOW_WEBSERVER_HOST=${AIRFLOW_WEBSERVER_HOST}
+
+  airflow:
+    image: bitnami/airflow:2.9.1
+    environment:
+      - AIRFLOW_SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW_DATABASE_NAME=${AIRFLOW_DATABASE_NAME}
+      - AIRFLOW_DATABASE_USERNAME=${AIRFLOW_DATABASE_USERNAME}
+      - AIRFLOW_DATABASE_PASSWORD=${AIRFLOW_DATABASE_PASSWORD}
+      - AIRFLOW_EXECUTOR=${AIRFLOW_EXECUTOR}
+      - AIRFLOW_USERNAME=${AIRFLOW_USERNAME}
+      - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD}
+    ports:
+      - '8080:8080'
+
+volumes:
+  postgresql_data: {}
+  redis_data: {}
