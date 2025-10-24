@@ -1,0 +1,168 @@
+[
+  {
+    "_id": "68f484c4a527e459e5e5cd8b",
+    "type": "connection",
+    "_insertedAt": "2025-10-19T06:27:16.848Z",
+    "connectionData": {
+      "name": "restaurants in Sydney",
+      "description": "",
+      "apiConfig": {
+        "baseUrl": "https://google-map-places.p.rapidapi.com/maps/api/place/textsearch/json",
+        "method": "GET",
+        "endpoint": "",
+        "headers": [
+          {
+            "key": "x-rapidapi-key",
+            "value": "ffbaceaaeamsh9084aa32f4d5dfdp13028bjsn2366c1d9a5c9"
+          },
+          {
+            "key": "x-rapidapi-host",
+            "value": "google-map-places.p.rapidapi.com"
+          }
+        ],
+        "authType": "none",
+        "authConfig": {}
+      },
+      "parameters": [
+        {
+          "id": "aessb3jmd",
+          "name": "query",
+          "type": "query",
+          "mode": "list",
+          "values": [
+            "restaurants in Sydney"
+          ],
+          "isRequired": false
+        }
+      ],
+      "fieldMappings": [
+        {
+          "sourcePath": "$.address.city",
+          "targetField": "city",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.address.street",
+          "targetField": "street",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.address.zipcode",
+          "targetField": "zipcode",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.company.bs",
+          "targetField": "bs",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.company.catchPhrase",
+          "targetField": "catchphrase",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.company.name",
+          "targetField": "name",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.email",
+          "targetField": "email",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.id",
+          "targetField": "id",
+          "dataType": "number",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.name",
+          "targetField": "name",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.phone",
+          "targetField": "phone",
+          "dataType": "string",
+          "isSelected": true
+        },
+        {
+          "sourcePath": "$.website",
+          "targetField": "website",
+          "dataType": "string",
+          "isSelected": true
+        }
+      ],
+      "tableName": "api_places_standardized",
+      "validationRules": [],
+      "options": {}
+    }
+  },
+  {
+    "_id": "68f49e0c13792429bc0aa3af",
+    "type": "connection",
+    "connectionId": "monthly_google_places_restaurants",
+    "name": "Monthly Sydney Restaurants Data",
+    "config": {
+      "connectionId": "monthly_google_places_restaurants",
+      "name": "Monthly Sydney Restaurants Data",
+      "baseUrl": "https://google-map-places.p.rapidapi.com/maps/api/place/textsearch/json",
+      "method": "GET",
+      "headers": {
+        "x-rapidapi-key": "ffbaceaaeamsh9084aa32f4d5dfdp13028bjsn2366c1d9a5c9",
+        "x-rapidapi-host": "google-map-places.p.rapidapi.com"
+      },
+      "parameters": {
+        "query": "restaurants in Sydney",
+        "opennow": "true",
+        "language": "en",
+        "region": "en"
+      },
+      "fieldMappings": [
+        {
+          "sourcePath": "$.results[*].name",
+          "targetField": "restaurant_name",
+          "dataType": "string"
+        },
+        {
+          "sourcePath": "$.results[*].formatted_address",
+          "targetField": "address",
+          "dataType": "string"
+        },
+        {
+          "sourcePath": "$.results[*].rating",
+          "targetField": "rating",
+          "dataType": "number"
+        },
+        {
+          "sourcePath": "$.results[*].price_level",
+          "targetField": "price_level",
+          "dataType": "number"
+        }
+      ]
+    },
+    "isActive": true,
+    "_insertedAt": "2025-10-19T08:15:08.550Z"
+  },
+  {
+    "_id": "68f49e0c13792429bc0aa3b0",
+    "type": "schedule",
+    "scheduleId": "monthly_sydney_restaurants",
+    "name": "Monthly Sydney Restaurants Update",
+    "connectionId": "monthly_google_places_restaurants",
+    "cronExpression": "0 0 1 * *",
+    "isActive": true,
+    "description": "Monthly collection of restaurant data from Google Places API for Sydney",
+    "_insertedAt": "2025-10-19T08:15:08.945Z"
+  }
+]
