@@ -272,7 +272,9 @@ export default function SchedulesPage() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">Next Run</p>
-                      <p className="text-sm font-medium">{new Date(schedule.nextRun).toLocaleString()}</p>
+                      <p className="text-sm font-medium">
+                        {schedule.nextRun ? new Date(schedule.nextRun).toLocaleString() : "Never"}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

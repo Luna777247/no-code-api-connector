@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { ClientToaster } from "@/components/client-toaster"
 import "./globals.css"
 
@@ -22,41 +21,47 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/*
+          Synchronous, safe cleanup to remove attributes injected by browser
+          extensions (eg. bis_skin_checked, bis_register, data-bis-*, __processed_*)
+          before React hydrates. Avoids invalid CSS/selectors like `[data-bis-*]`.
+        */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Remove browser extension attributes that cause hydration mismatches
-              function cleanupExtensionAttributes() {
-                const elements = document.querySelectorAll('[bis_skin_checked], [data-bis-*]');
-                elements.forEach(el => {
-                  el.removeAttribute('bis_skin_checked');
-                  // Remove any data-bis-* attributes
-                  Array.from(el.attributes).forEach(attr => {
-                    if (attr.name.startsWith('data-bis-')) {
-                      el.removeAttribute(attr.name);
+              (function(){
+                try {
+                  var els = document.getElementsByTagName('*');
+                  for (var i = 0; i < els.length; i++) {
+                    var el = els[i];
+                    // collect names to remove to avoid mutating NamedNodeMap while iterating
+                    var toRemove = [];
+                    for (var j = 0; j < el.attributes.length; j++) {
+                      var name = el.attributes[j].name;
+                      if (
+                        name === 'bis_skin_checked' ||
+                        name === 'bis_register' ||
+                        name.indexOf('data-bis-') === 0 ||
+                        name.indexOf('__processed_') === 0
+                      ) {
+                        toRemove.push(name);
+                      }
                     }
-                  });
-                });
-              }
-
-              // Run immediately
-              cleanupExtensionAttributes();
-
-              // Run on DOMContentLoaded
-              document.addEventListener('DOMContentLoaded', cleanupExtensionAttributes);
-
-              // Run periodically to catch late additions
-              setInterval(cleanupExtensionAttributes, 1000);
+                    for (var k = 0; k < toRemove.length; k++) {
+                      try { el.removeAttribute(toRemove[k]); } catch(e) {}
+                    }
+                  }
+                } catch (e) {}
+              })();
             `,
           }}
         />
       </head>
-      <body className={`font-sans antialiased`} suppressHydrationWarning={true}>
-        <div suppressHydrationWarning={true}>
+      <body className={`font-sans antialiased`}>
+        <div>
           {children}
         </div>
         <ClientToaster />
-        <Analytics />
       </body>
     </html>
   )

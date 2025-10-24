@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Database, Calendar, Activity, Clock, XCircle, Trash2 } from "lucide-react"
 import { PageLayout } from "@/components/ui/page-layout"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Checkbox } from "@/components/ui/checkbox"
 import apiClient from "../../services/apiClient.js"
 
 export default function ConnectionsPage() {
@@ -16,14 +15,16 @@ export default function ConnectionsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
-  const [deleteWithData, setDeleteWithData] = useState(false)
 
   useEffect(() => {
     async function load() {
       try {
         setLoading(true)
         const res = await apiClient.get('/api/connections')
-        setConnections(res.data || [])
+        const data = res.data || []
+        // Ensure data is always an array
+        const connectionsArray = Array.isArray(data) ? data : []
+        setConnections(connectionsArray)
       } catch (err) {
         console.error('[v0] Error fetching connections:', err)
         setError('Failed to load connections')
@@ -37,12 +38,12 @@ export default function ConnectionsPage() {
   const deleteConnection = async (connectionId, deleteData = false) => {
     setDeletingId(connectionId)
     try {
-      const res = await apiClient.delete(`/api/connections/${connectionId}`, { params: { deleteData } })
+      // For now, just delete the connection (deleteData parameter not implemented in backend)
+      const res = await apiClient.delete(`/api/connections/${connectionId}`)
       if (!res.data || res.status < 200 || res.status >= 300) {
         throw new Error('Failed to delete connection')
       }
       setConnections(connections.filter(conn => conn.id !== connectionId))
-      setDeleteWithData(false)
     } catch (err) {
       console.error('[v0] Error deleting connection:', err)
       setError(err instanceof Error ? err.message : 'Failed to delete connection')
@@ -122,16 +123,12 @@ export default function ConnectionsPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete connection?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. You can also delete extracted data.
+                              This action cannot be undone. This will permanently delete the connection.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox id="deleteData" checked={deleteWithData} onCheckedChange={(v)=>setDeleteWithData(!!v)} />
-                            <label htmlFor="deleteData" className="text-sm">Also delete extracted data</label>
-                          </div>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteConnection(conn.id, deleteWithData)}>Delete</AlertDialogAction>
+                            <AlertDialogAction onClick={() => deleteConnection(conn.id)}>Delete</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>

@@ -29,8 +29,8 @@ export default function HomePage() {
             <Link href="/connections">
               <Card className="hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
+                  <div className="flex items-center gap-3" suppressHydrationWarning={true}>
+                    <div className="p-2 bg-primary/10 rounded-lg" suppressHydrationWarning={true}>
                       <Database className="h-6 w-6 text-primary" />
                     </div>
                     <CardTitle>API Connections</CardTitle>
@@ -47,8 +47,8 @@ export default function HomePage() {
             <Link href="/schedules">
               <Card className="hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-chart-2/10 rounded-lg">
+                  <div className="flex items-center gap-3" suppressHydrationWarning={true}>
+                    <div className="p-2 bg-chart-2/10 rounded-lg" suppressHydrationWarning={true}>
                       <Calendar className="h-6 w-6 text-chart-2" />
                     </div>
                     <CardTitle>Schedules</CardTitle>
@@ -65,8 +65,8 @@ export default function HomePage() {
             <Link href="/runs">
               <Card className="hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-chart-3/10 rounded-lg">
+                  <div className="flex items-center gap-3" suppressHydrationWarning={true}>
+                    <div className="p-2 bg-chart-3/10 rounded-lg" suppressHydrationWarning={true}>
                       <PlayCircle className="h-6 w-6 text-chart-3" />
                     </div>
                     <CardTitle>Run History</CardTitle>
@@ -83,8 +83,8 @@ export default function HomePage() {
             <Link href="/data">
               <Card className="hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-chart-4/10 rounded-lg">
+                  <div className="flex items-center gap-3" suppressHydrationWarning={true}>
+                    <div className="p-2 bg-chart-4/10 rounded-lg" suppressHydrationWarning={true}>
                       <BarChart3 className="h-6 w-6 text-chart-4" />
                     </div>
                     <CardTitle>Data Explorer</CardTitle>
@@ -101,8 +101,8 @@ export default function HomePage() {
             <Link href="/mappings">
               <Card className="hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-chart-5/10 rounded-lg">
+                  <div className="flex items-center gap-3" suppressHydrationWarning={true}>
+                    <div className="p-2 bg-chart-5/10 rounded-lg" suppressHydrationWarning={true}>
                       <Settings className="h-6 w-6 text-chart-5" />
                     </div>
                     <CardTitle>Field Mappings</CardTitle>
@@ -119,8 +119,8 @@ export default function HomePage() {
             <Link href="/dashboards">
               <Card className="hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-500/10 rounded-lg">
+                  <div className="flex items-center gap-3" suppressHydrationWarning={true}>
+                    <div className="p-2 bg-purple-500/10 rounded-lg" suppressHydrationWarning={true}>
                       <BarChart3 className="h-6 w-6 text-purple-500" />
                     </div>
                     <CardTitle>Analytics Dashboards</CardTitle>
@@ -137,8 +137,8 @@ export default function HomePage() {
             <Link href="/monitoring">
               <Card className="hover:border-primary transition-colors cursor-pointer h-full">
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-chart-1/10 rounded-lg">
+                  <div className="flex items-center gap-3" suppressHydrationWarning={true}>
+                    <div className="p-2 bg-chart-1/10 rounded-lg" suppressHydrationWarning={true}>
                       <BarChart3 className="h-6 w-6 text-chart-1" />
                     </div>
                     <CardTitle>Monitoring</CardTitle>
@@ -168,43 +168,43 @@ export default function HomePage() {
           <h2 className="text-xl font-semibold mb-4">Platform Features</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" suppressHydrationWarning={true}>
             <div className="flex gap-3" suppressHydrationWarning={true}>
-              <div className="text-primary">✓</div>
-              <div>
+              <div className="text-primary" suppressHydrationWarning={true}>✓</div>
+              <div suppressHydrationWarning={true}>
                 <p className="font-medium">Multi-Parameter Support</p>
                 <p className="text-sm text-muted-foreground">List, Cartesian product, and template modes</p>
               </div>
             </div>
             <div className="flex gap-3" suppressHydrationWarning={true}>
-              <div className="text-primary">✓</div>
-              <div>
+              <div className="text-primary" suppressHydrationWarning={true}>✓</div>
+              <div suppressHydrationWarning={true}>
                 <p className="font-medium">Dynamic Parameters</p>
                 <p className="text-sm text-muted-foreground">Date ranges, incremental IDs, and custom logic</p>
               </div>
             </div>
             <div className="flex gap-3" suppressHydrationWarning={true}>
-              <div className="text-primary">✓</div>
-              <div>
+              <div className="text-primary" suppressHydrationWarning={true}>✓</div>
+              <div suppressHydrationWarning={true}>
                 <p className="font-medium">Automatic Schema Detection</p>
                 <p className="text-sm text-muted-foreground">Parse JSON responses and suggest mappings</p>
               </div>
             </div>
             <div className="flex gap-3" suppressHydrationWarning={true}>
-              <div className="text-primary">✓</div>
-              <div>
+              <div className="text-primary" suppressHydrationWarning={true}>✓</div>
+              <div suppressHydrationWarning={true}>
                 <p className="font-medium">Full ETL Pipeline</p>
                 <p className="text-sm text-muted-foreground">Extract, transform, and load to data warehouse</p>
               </div>
             </div>
             <div className="flex gap-3" suppressHydrationWarning={true}>
-              <div className="text-primary">✓</div>
-              <div>
+              <div className="text-primary" suppressHydrationWarning={true}>✓</div>
+              <div suppressHydrationWarning={true}>
                 <p className="font-medium">Flexible Scheduling</p>
                 <p className="text-sm text-muted-foreground">CRON expressions and preset intervals</p>
               </div>
             </div>
             <div className="flex gap-3" suppressHydrationWarning={true}>
-              <div className="text-primary">✓</div>
-              <div>
+              <div className="text-primary" suppressHydrationWarning={true}>✓</div>
+              <div suppressHydrationWarning={true}>
                 <p className="font-medium">Comprehensive Logging</p>
                 <p className="text-sm text-muted-foreground">Track every request and transformation</p>
               </div>

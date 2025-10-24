@@ -39,11 +39,11 @@ export function SystemStats() {
   }, [])
 
   return (
-    <Card suppressHydrationWarning={true}>
-      <CardHeader suppressHydrationWarning={true}>
-        <CardTitle>System Stats</CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle suppressHydrationWarning={true}>System Stats</CardTitle>
       </CardHeader>
-      <CardContent suppressHydrationWarning={true}>
+      <CardContent>
         <div suppressHydrationWarning={true}>Uptime: {stats.uptime}</div>
         <div suppressHydrationWarning={true}>Runs: {stats.runs}</div>
       </CardContent>
