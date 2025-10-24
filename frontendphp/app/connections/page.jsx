@@ -66,19 +66,19 @@ export default function ConnectionsPage() {
       }
     >
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>
+        <div className="flex items-center justify-center py-12 text-muted-foreground" suppressHydrationWarning={true}>Loading...</div>
       ) : error ? (
         <Card className="border-destructive">
-          <CardContent className="py-12 text-center">
+          <CardContent className="py-12 text-center" suppressHydrationWarning={true}>
             <div className="text-destructive mb-4">⚠️ Error loading connections</div>
             <p className="text-muted-foreground">{error}</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4" suppressHydrationWarning={true}>
           {connections.length === 0 ? (
             <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12">
+              <CardContent className="flex flex-col items-center justify-center py-12" suppressHydrationWarning={true}>
                 <Database className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No connections found</h3>
                 <p className="text-muted-foreground text-center mb-4">Create your first API connection</p>

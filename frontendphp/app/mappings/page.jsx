@@ -45,7 +45,7 @@ export default function MappingsPage() {
         description="Configure how API fields map to database columns"
         showBackButton={false}
       >
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" suppressHydrationWarning={true}>
           <span className="text-muted-foreground">Loading field mappings...</span>
         </div>
       </PageLayout>
@@ -60,7 +60,7 @@ export default function MappingsPage() {
         showBackButton={false}
       >
         <Card className="border-destructive">
-          <CardContent className="flex flex-col items-center justify-center py-12">
+          <CardContent className="flex flex-col items-center justify-center py-12" suppressHydrationWarning={true}>
             <div className="text-destructive mb-4">⚠️ Error loading field mappings</div>
             <p className="text-muted-foreground text-center mb-4">{error}</p>
             <Button onClick={() => window.location.reload()} variant="outline">
@@ -81,7 +81,7 @@ export default function MappingsPage() {
 
         {mappings.length === 0 ? (
           <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
+            <CardContent className="flex flex-col items-center justify-center py-12" suppressHydrationWarning={true}>
               <Settings className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No field mappings configured</h3>
               <p className="text-muted-foreground text-center mb-4 text-pretty max-w-md">
@@ -93,7 +93,7 @@ export default function MappingsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-4" suppressHydrationWarning={true}>
             {mappings.map((mapping) => (
               <Card key={mapping.id}>
                 <CardHeader>
@@ -120,7 +120,7 @@ export default function MappingsPage() {
                     </Link>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent suppressHydrationWarning={true}>
                   <div className="space-y-2">
                     {(mapping.fields || []).map((field, index) => (
                       <div key={index} className="flex items-center gap-3 p-2 bg-muted/50 rounded text-sm">
