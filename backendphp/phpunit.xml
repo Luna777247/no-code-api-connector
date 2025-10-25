@@ -25,4 +25,8 @@
     <logging>
         <junit outputFile="phpunit-report.xml"/>
     </logging>
+    <php>
+        <!-- Suppress deprecation and strict notices during test runs (PHP 8.x) -->
+        <ini name="error_reporting" value="E_ALL &amp; ~E_DEPRECATED &amp; ~E_USER_DEPRECATED &amp; ~E_STRICT"/>
+    </php>
 </phpunit>
