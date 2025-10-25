@@ -1,69 +1,94 @@
 <?php
 namespace App\Repositories;
 
-use App\Config\Database;
+use App\Config\AppConfig;
+use App\Exceptions\DatabaseException;
 
-class RunRepository
+class RunRepository extends BaseRepository
 {
-    private function getCollectionName(): string
+    protected function getCollectionName(): string
     {
-        return getenv('API_RUNS_COLLECTION') ?: 'api_runs';
+        return AppConfig::getApiRunsCollection();
     }
 
-    public function findAll(int $limit = 200): array
+    public function findAll(int $limit = 50): array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return [];
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return [];
-        $query = new \MongoDB\Driver\Query([], ['sort' => ['_id' => -1], 'limit' => $limit]);
-        $cursor = $manager->executeQuery($db . '.' . $this->getCollectionName(), $query);
-        $out = [];
-        foreach ($cursor as $doc) $out[] = $this->normalize($doc);
-        return $out;
+        try {
+            return $this->findWithPagination([], ['limit' => $limit]);
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
+            return [];
+        }
     }
 
     public function findByConnectionId(string $connectionId, int $limit = 10): array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return [];
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return [];
-        $filter = ['connectionId' => $connectionId];
-        $query = new \MongoDB\Driver\Query($filter, ['sort' => ['_id' => -1], 'limit' => $limit]);
-        $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
-        $out = [];
-        foreach ($cursor as $doc) $out[] = $this->normalize($doc);
-        return $out;
+        try {
+            return $this->findWithPagination(
+                ['connectionId' => $connectionId],
+                ['limit' => $limit]
+            );
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
+            return [];
+        }
+    }
+
+    public function findById(string $id): ?array
+    {
+        try {
+            $objectId = new \MongoDB\BSON\ObjectId($id);
+        } catch (\MongoDB\Driver\Exception\InvalidArgumentException $e) {
+            throw new DatabaseException(
+                "Invalid document ID format",
+                ['id' => $id],
+                0,
+                $e
+            );
+        }
+
+        $results = $this->findWithPagination(['_id' => $objectId], ['limit' => 1]);
+
+        return $results[0] ?? null;
     }
 
     public function insert(array $data): string
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return uniqid('run_', true);
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return uniqid('run_', true);
-        $bulk = new \MongoDB\Driver\BulkWrite();
-        $id = $bulk->insert($data + ['createdAt' => date('c')]);
-        $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
-        return (string)$id;
+        try {
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $insertData = $data + ['createdAt' => date('c')];
+            $id = $bulk->insert($insertData);
+
+            $this->executeBulkWrite($bulk);
+
+            return (string)$id;
+        } catch (DatabaseException $e) {
+            // Return fake ID on database errors to maintain backward compatibility
+            return uniqid('run_', true);
+        }
     }
 
-    private function normalize(object|array $doc): array
+    protected function normalize($document): array
     {
-        $arr = json_decode(json_encode($doc, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];
-        if (isset($arr['_id']['$oid'])) $arr['_id'] = $arr['_id']['$oid'];
-        // Map fields FE expects
+        $arr = json_decode(json_encode($document, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];
+        if (isset($arr['_id']['$oid'])) {
+            $arr['_id'] = $arr['_id']['$oid'];
+        }
+        // Map fields FE expects and include all original fields
         return [
             'id' => $arr['_id'] ?? ($arr['id'] ?? ''),
             'connectionId' => $arr['connectionId'] ?? '',
             'status' => $arr['status'] ?? 'completed',
-            'startedAt' => $arr['startedAt'] ?? date('c'),
+            'startedAt' => $arr['startedAt'] ?? null,
+            'createdAt' => $arr['createdAt'] ?? null,
             'duration' => $arr['duration'] ?? null,
             'recordsExtracted' => $arr['recordsExtracted'] ?? null,
             'recordsProcessed' => $arr['recordsProcessed'] ?? null,
             'executionTime' => $arr['executionTime'] ?? null,
             'errorMessage' => $arr['errorMessage'] ?? null,
+            'response' => $arr['response'] ?? null,
+            'scheduleId' => $arr['scheduleId'] ?? null,
+            'retryOf' => $arr['retryOf'] ?? null,
         ];
     }
 }

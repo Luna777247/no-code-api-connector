@@ -2,7 +2,8 @@
   "name": "luna777247/backend-php",
   "description": "PHP Backend for Data Pipeline",
   "require": {
-    "php": "^8.3"
+    "php": "^8.3",
+    "vlucas/phpdotenv": "^5.6"
   },
   "autoload": {
     "psr-4": {

@@ -89,8 +89,8 @@ export default function ConnectionsPage() {
               </CardContent>
             </Card>
           ) : (
-            connections.map((conn) => (
-              <Card key={conn.id}>
+            connections.map((conn, index) => (
+              <Card key={`${conn.id}-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
