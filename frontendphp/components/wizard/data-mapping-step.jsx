@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Database, Search, Filter, ArrowUpDown, Loader2, Play, AlertCircle, CheckCircle2 } from 'lucide-react'
 import apiClient from '../../services/apiClient'
 
-export function DataMappingStep({ data, apiConfig, onChange }) {
+export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [preview, setPreview] = useState(null)
@@ -51,11 +51,20 @@ export function DataMappingStep({ data, apiConfig, onChange }) {
     setLoading(true)
     setError('')
     try {
+      // Build parameters payload from wizard parameters (support list mode)
+      const paramDefs = Array.isArray(parameters)
+        ? parameters
+            .filter(p => p && p.name && Array.isArray(p.values) && p.values.length > 0)
+            .map(p => ({ name: p.name, values: p.values }))
+        : []
+
       const payload = {
         apiConfig: {
           baseUrl: apiConfig?.baseUrl,
           method: apiConfig?.method || 'GET',
-          headers: (apiConfig?.headers || []).filter(h => h.key && h.value)
+          headers: (apiConfig?.headers || []).filter(h => h.key && h.value),
+          // Send parameter definitions so backend can attach them to URL/body
+          parameters: paramDefs
         }
       }
       const res = await apiClient.post('/api/test-connection', payload)
