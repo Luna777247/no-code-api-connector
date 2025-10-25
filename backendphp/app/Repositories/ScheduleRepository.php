@@ -1,154 +1,117 @@
 <?php
 namespace App\Repositories;
 
-use App\Config\Database;
+use App\Config\AppConfig;
+use App\Exceptions\DatabaseException;
 
-class ScheduleRepository
+class ScheduleRepository extends BaseRepository
 {
-    private function getCollectionName(): string
+    protected function getCollectionName(): string
     {
-        return getenv('API_SCHEDULES_COLLECTION') ?: 'api_schedules';
+        return AppConfig::getApiSchedulesCollection();
     }
 
     public function findAll(): array
     {
-        // If MongoDB PHP driver is missing, return empty array (frontend will show empty state)
-        if (!class_exists('MongoDB\\Driver\\Manager')) {
-            return [];
-        }
-
-        $manager = Database::mongoManager();
-        $dbName = Database::mongoDbName();
-        if (!$manager || !$dbName) {
-            return [];
-        }
-
         try {
-            $query = new \MongoDB\Driver\Query([], [
-                'sort' => ['_id' => -1],
+            return $this->findWithPagination([], [
                 'limit' => 100,
-                'maxTimeMS' => 10000 // 10 second timeout
+                'maxTimeMS' => $this->getLimitedQueryTimeout()
             ]);
-            $cursor = $manager->executeQuery($dbName . '.' . $this->getCollectionName(), $query);
-
-            $items = [];
-            foreach ($cursor as $doc) {
-                $items[] = $this->normalizeDocument($doc);
-            }
-            return $items;
-        } catch (\Throwable $e) {
-            // Return safe empty result; controller will handle error if necessary
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
             return [];
         }
     }
 
     public function saveDagId(string $scheduleId, string $dagId): bool
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) {
-            return false;
-        }
-
-        $manager = Database::mongoManager();
-        $dbName = Database::mongoDbName();
-        if (!$manager || !$dbName) {
-            return false;
-        }
-
         try {
             $bulk = new \MongoDB\Driver\BulkWrite();
             $bulk->update(
                 ['_id' => new \MongoDB\BSON\ObjectId($scheduleId)],
-                ['$set' => ['dagId' => $dagId, 'updatedAt' => new \MongoDB\BSON\UTCDateTime()]],
+                ['$set' => [
+                    'dagId' => $dagId,
+                    'updatedAt' => new \MongoDB\BSON\UTCDateTime()
+                ]],
                 ['upsert' => false]
             );
-            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
-            return true;
-        } catch (\Throwable $e) {
+
+            $result = $this->executeBulkWrite($bulk);
+            return $result->getModifiedCount() > 0;
+        } catch (DatabaseException $e) {
+            // Return false on database errors to maintain backward compatibility
             return false;
         }
     }
 
     public function insert(array $data): ?array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) {
-            return $data + ['_id' => uniqid('schedule_', true)];
-        }
-
-        $manager = Database::mongoManager();
-        $dbName = Database::mongoDbName();
-        if (!$manager || !$dbName) {
-            return null;
-        }
-
         try {
             $bulk = new \MongoDB\Driver\BulkWrite();
-            $id = $bulk->insert($data + ['createdAt' => date('c')]);
-            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
-            
-            $data['_id'] = (string)$id;
-            return $this->normalizeDocument($data);
-        } catch (\Throwable $e) {
+            $insertData = $data + ['createdAt' => date('c')];
+            $id = $bulk->insert($insertData);
+
+            $this->executeBulkWrite($bulk);
+
+            $insertData['_id'] = (string)$id;
+            return $this->normalizeDocument($insertData);
+        } catch (DatabaseException $e) {
+            // Return null on database errors to maintain backward compatibility
             return null;
         }
     }
 
     public function update(string $id, array $data): bool
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) {
-            return false;
-        }
-
-        $manager = Database::mongoManager();
-        $dbName = Database::mongoDbName();
-        if (!$manager || !$dbName) {
-            return false;
-        }
-
         try {
             $bulk = new \MongoDB\Driver\BulkWrite();
+            $updateData = $data + ['updatedAt' => new \MongoDB\BSON\UTCDateTime()];
             $bulk->update(
                 ['_id' => new \MongoDB\BSON\ObjectId($id)],
-                ['$set' => $data + ['updatedAt' => new \MongoDB\BSON\UTCDateTime()]],
+                ['$set' => $updateData],
                 ['upsert' => false]
             );
-            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
-            return true;
-        } catch (\Throwable $e) {
+
+            $result = $this->executeBulkWrite($bulk);
+            return $result->getModifiedCount() > 0;
+        } catch (DatabaseException $e) {
+            // Return false on database errors to maintain backward compatibility
             return false;
         }
     }
 
     public function delete(string $id): bool
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) {
-            return false;
-        }
-
-        $manager = Database::mongoManager();
-        $dbName = Database::mongoDbName();
-        if (!$manager || !$dbName) {
-            return false;
-        }
-
         try {
             $bulk = new \MongoDB\Driver\BulkWrite();
-            $bulk->delete(['_id' => new \MongoDB\BSON\ObjectId($id)]);
-            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
-            return true;
-        } catch (\Throwable $e) {
+            $bulk->delete(
+                ['_id' => new \MongoDB\BSON\ObjectId($id)],
+                ['limit' => 1]
+            );
+
+            $result = $this->executeBulkWrite($bulk);
+            return $result->getDeletedCount() > 0;
+        } catch (DatabaseException $e) {
+            // Return false on database errors to maintain backward compatibility
             return false;
         }
     }
 
-    private function normalizeDocument(object|array $doc): array
+    protected function normalizeDocument($document): array
     {
         // Convert BSON document/stdClass to array recursively and string-cast ObjectId
-        $arr = json_decode(json_encode($doc, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];
+        $arr = json_decode(json_encode($document, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];
 
         if (isset($arr['_id']) && is_array($arr['_id']) && isset($arr['_id']['$oid'])) {
             $arr['_id'] = $arr['_id']['$oid'];
         }
 
         return $arr;
+    }
+
+    protected function normalize($document): array
+    {
+        return $this->normalizeDocument($document);
     }
 }
