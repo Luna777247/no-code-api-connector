@@ -51,7 +51,7 @@ class ScheduleManagementController
             http_response_code(400);
             return ['error' => 'Failed to update schedule'];
         }
-        return $result;
+        return ['ok' => true];
     }
 
     public function delete(string $id): array

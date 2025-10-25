@@ -65,7 +65,7 @@ export default function RunsPage() {
     >
 
         <Card className="mb-6">
-          <CardContent className="pt-6">
+          <CardContent className="pt-6" suppressHydrationWarning={true}>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -101,14 +101,14 @@ export default function RunsPage() {
 
         {loading ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
+            <CardContent className="flex flex-col items-center justify-center py-12" suppressHydrationWarning={true}>
               <Clock className="h-12 w-12 text-muted-foreground mb-4 animate-spin" />
               <p className="text-muted-foreground">Loading runs...</p>
             </CardContent>
           </Card>
         ) : error ? (
           <Card className="border-destructive">
-            <CardContent className="flex flex-col items-center justify-center py-12">
+            <CardContent className="flex flex-col items-center justify-center py-12" suppressHydrationWarning={true}>
               <XCircle className="h-12 w-12 text-destructive mb-4" />
               <h3 className="text-lg font-semibold mb-2">Error loading runs</h3>
               <p className="text-muted-foreground text-center">{error}</p>
@@ -116,7 +116,7 @@ export default function RunsPage() {
           </Card>
         ) : runs.length === 0 ? (
           <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
+            <CardContent className="flex flex-col items-center justify-center py-12" suppressHydrationWarning={true}>
               <PlayCircle className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No runs yet</h3>
               <p className="text-muted-foreground text-center mb-4 text-pretty max-w-md">
@@ -128,7 +128,7 @@ export default function RunsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4" suppressHydrationWarning={true}>
             {runs.map((run) => {
               const duration = run.executionTime 
                 ? `${Math.floor(run.executionTime / 1000)}s` 
@@ -165,7 +165,7 @@ export default function RunsPage() {
                       </Link>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent suppressHydrationWarning={true}>
                     <div className="grid gap-4 md:grid-cols-5">
                       <div>
                         <p className="text-xs text-muted-foreground">Duration</p>

@@ -1,148 +1,164 @@
 <?php
 namespace App\Repositories;
 
-use App\Config\Database;
+use App\Config\AppConfig;
+use App\Exceptions\DatabaseException;
 
-class ConnectionRepository
+class ConnectionRepository extends BaseRepository
 {
-    private const COLLECTION = 'api_connections';
+    protected function getCollectionName(): string
+    {
+        return AppConfig::getApiConnectionsCollection();
+    }
 
     public function findAll(): array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) {
-            return [];
-        }
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return [];
-
         try {
-            $query = new \MongoDB\Driver\Query([], [
-                'sort' => ['_id' => -1],
-                'limit' => 200,
-                'maxTimeMS' => 15000 // 15 second timeout
-            ]);
-            $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
-            $out = [];
-            foreach ($cursor as $doc) $out[] = $this->normalize($doc);
-            return $out;
-        } catch (\MongoDB\Driver\Exception\ExecutionTimeoutException $e) {
-            // Return empty array on timeout
-            return [];
-        } catch (\Throwable $e) {
+            return $this->findAllCached([], ['limit' => 200]);
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
             return [];
         }
     }
 
     public function findAllLimited(int $limit = 50): array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) {
-            return [];
-        }
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return [];
-
         try {
-            // Set a reasonable timeout for the query
-            $query = new \MongoDB\Driver\Query([], [
-                'sort' => ['_id' => -1],
+            return $this->findAllCached([], [
                 'limit' => $limit,
-                'maxTimeMS' => 10000 // 10 second timeout
+                'maxTimeMS' => $this->getLimitedQueryTimeout()
             ]);
-            $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
-            $out = [];
-            foreach ($cursor as $doc) $out[] = $this->normalize($doc);
-            return $out;
-        } catch (\MongoDB\Driver\Exception\ExecutionTimeoutException $e) {
-            // Return empty array on timeout
-            return [];
-        } catch (\Throwable $e) {
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
             return [];
         }
     }
 
     public function findById(string $id): ?array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return null;
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return null;
+        try {
+            $objectId = new \MongoDB\BSON\ObjectId($id);
+        } catch (\MongoDB\Driver\Exception\InvalidArgumentException $e) {
+            throw new DatabaseException(
+                "Invalid document ID format",
+                ['id' => $id],
+                0,
+                $e
+            );
+        }
 
-        $filter = ['_id' => new \MongoDB\BSON\ObjectId($id)];
-        $query = new \MongoDB\Driver\Query($filter, ['limit' => 1]);
-        $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
-        $docs = $cursor->toArray();
-        if (!$docs) return null;
-        return $this->normalize($docs[0]);
+        $results = $this->findWithPagination(['_id' => $objectId], ['limit' => 1]);
+
+        return $results[0] ?? null;
     }
 
     public function findByConnectionId(string $connectionId): ?array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return null;
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return null;
-
         try {
-            $filter = ['connectionId' => $connectionId];
-            $query = new \MongoDB\Driver\Query($filter, [
-                'limit' => 1,
-                'maxTimeMS' => 5000 // 5 second timeout
-            ]);
-            $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
-            $docs = $cursor->toArray();
-            if (!$docs) return null;
-            return $this->normalize($docs[0]);
-        } catch (\Throwable $e) {
+            $results = $this->findWithPagination(
+                ['connectionId' => $connectionId],
+                ['limit' => 1, 'maxTimeMS' => $this->getFindTimeout()]
+            );
+
+            return $results[0] ?? null;
+        } catch (DatabaseException $e) {
+            // Return null on database errors to maintain backward compatibility
             return null;
         }
     }
 
     public function insert(array $data): ?array
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return $data + ['_id' => uniqid('fake_', true)];
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return null;
+        try {
+            // Check for duplicate connection based on name and baseUrl
+            $name = $data['name'] ?? '';
+            $baseUrl = $data['apiConfig']['baseUrl'] ?? ($data['baseUrl'] ?? '');
 
-        $bulk = new \MongoDB\Driver\BulkWrite();
-        $id = $bulk->insert($data + ['createdAt' => date('c')]);
-        $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
-        $data['_id'] = (string)$id;
-        return $this->normalize($data);
+            if ($name && $baseUrl) {
+                $existing = $this->findWithPagination([
+                    'name' => $name,
+                    'apiConfig.baseUrl' => $baseUrl
+                ], ['limit' => 1]);
+
+                if (!empty($existing)) {
+                    // Duplicate found, return null to maintain backward compatibility
+                    return null;
+                }
+            }
+
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $insertData = $data + ['createdAt' => date('c')];
+            $id = $bulk->insert($insertData);
+
+            $this->executeBulkWrite($bulk);
+
+            $insertData['_id'] = (string)$id;
+            $result = $this->normalize($insertData);
+
+            // Invalidate cache after successful insert
+            $this->invalidateCacheOnChange();
+
+            return $result;
+        } catch (DatabaseException $e) {
+            // Return null on database errors to maintain backward compatibility
+            return null;
+        }
     }
 
     public function update(string $id, array $data): bool
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return true;
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return false;
+        try {
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->update(
+                ['_id' => new \MongoDB\BSON\ObjectId($id)],
+                ['$set' => $data]
+            );
 
-        $bulk = new \MongoDB\Driver\BulkWrite();
-        $bulk->update(['_id' => new \MongoDB\BSON\ObjectId($id)], ['$set' => $data]);
-        $result = $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
-        return $result->getModifiedCount() >= 0;
+            $result = $this->executeBulkWrite($bulk);
+            $success = $result->getModifiedCount() >= 0;
+
+            if ($success) {
+                // Invalidate cache after successful update
+                $this->invalidateCacheOnChange();
+            }
+
+            return $success;
+        } catch (DatabaseException $e) {
+            // Return false on database errors to maintain backward compatibility
+            return false;
+        }
     }
 
     public function delete(string $id): bool
     {
-        if (!class_exists('MongoDB\\Driver\\Manager')) return true;
-        $manager = Database::mongoManager();
-        $db = Database::mongoDbName();
-        if (!$manager || !$db) return false;
+        try {
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->delete(
+                ['_id' => new \MongoDB\BSON\ObjectId($id)],
+                ['limit' => 1]
+            );
 
-        $bulk = new \MongoDB\Driver\BulkWrite();
-        $bulk->delete(['_id' => new \MongoDB\BSON\ObjectId($id)], ['limit' => 1]);
-        $result = $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
-        return $result->getDeletedCount() > 0;
+            $result = $this->executeBulkWrite($bulk);
+            $success = $result->getDeletedCount() > 0;
+
+            if ($success) {
+                // Invalidate cache after successful delete
+                $this->invalidateCacheOnChange();
+            }
+
+            return $success;
+        } catch (DatabaseException $e) {
+            // Return false on database errors to maintain backward compatibility
+            return false;
+        }
     }
 
-    private function normalize(object|array $doc): array
+    protected function normalize($document): array
     {
-        $arr = json_decode(json_encode($doc, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];
-        if (isset($arr['_id']['$oid'])) $arr['_id'] = $arr['_id']['$oid'];
+        $arr = json_decode(json_encode($document, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];
+        if (isset($arr['_id']['$oid'])) {
+            $arr['_id'] = $arr['_id']['$oid'];
+        }
         return $arr;
     }
 }

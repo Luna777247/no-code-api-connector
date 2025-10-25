@@ -9,6 +9,9 @@ class StatusController
 {
     public function index(): array
     {
+        // Calculate uptime (server start time approximation)
+        $uptime = $this->getServerUptime();
+
         $repo = new RunRepository();
         $runs = [];
         try {
@@ -67,6 +70,7 @@ class StatusController
         } catch (\Throwable $e) {}
 
         return [
+            'uptime' => $uptime,
             'connections' => [
                 'active' => $connectionsTotal, // no separate active flag yet, mirror total
                 'total' => $connectionsTotal,
@@ -90,5 +94,32 @@ class StatusController
             ],
             'topConnections' => array_values($topConnections),
         ];
+    }
+
+    private function getServerUptime(): string
+    {
+        // Get server uptime using system information
+        if (function_exists('shell_exec') && strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
+            // Unix/Linux systems
+            $uptime = shell_exec('uptime -p 2>/dev/null');
+            if ($uptime) {
+                return trim(str_replace('up ', '', $uptime));
+            }
+        }
+
+        // Fallback: use script start time approximation
+        // In a real application, you'd track actual server start time
+        $startTime = $_SERVER['REQUEST_TIME'] ?? time();
+        $uptimeSeconds = time() - $startTime;
+
+        if ($uptimeSeconds < 60) {
+            return $uptimeSeconds . ' seconds';
+        } elseif ($uptimeSeconds < 3600) {
+            return floor($uptimeSeconds / 60) . ' minutes';
+        } elseif ($uptimeSeconds < 86400) {
+            return floor($uptimeSeconds / 3600) . ' hours';
+        } else {
+            return floor($uptimeSeconds / 86400) . ' days';
+        }
     }
 }

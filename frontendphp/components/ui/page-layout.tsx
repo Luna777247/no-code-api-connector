@@ -21,29 +21,29 @@ export function PageLayout({
   className = ''
 }: PageLayoutProps) {
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-background via-background to-muted/20 ${className}`} suppressHydrationWarning>
-      <div className="container mx-auto px-4 py-8" suppressHydrationWarning>
+    <div className={`min-h-screen bg-gradient-to-br from-background via-background to-muted/20 ${className}`} suppressHydrationWarning={true}>
+      <div className="container mx-auto px-4 py-8" suppressHydrationWarning={true}>
         {/* Header */}
         {(title || showBackButton || headerActions) && (
-          <header className="mb-8" suppressHydrationWarning>
-            <div className="flex items-center justify-between" suppressHydrationWarning>
-              <div className="flex items-center gap-4" suppressHydrationWarning>
+          <header className="mb-8" suppressHydrationWarning={true}>
+            <div className="flex items-center justify-between" suppressHydrationWarning={true}>
+              <div className="flex items-center gap-4" suppressHydrationWarning={true}>
                 {showBackButton && <BackToHomeButton />}
-                <div suppressHydrationWarning>
+                <div suppressHydrationWarning={true}>
                   {title && (
-                    <h1 className="text-3xl font-bold tracking-tight text-balance">
+                    <h1 className="text-3xl font-bold tracking-tight text-balance" suppressHydrationWarning={true}>
                       {title}
                     </h1>
                   )}
                   {description && (
-                    <p className="mt-2 text-muted-foreground text-pretty">
+                    <p className="mt-2 text-muted-foreground text-pretty" suppressHydrationWarning={true}>
                       {description}
                     </p>
                   )}
                 </div>
               </div>
               {headerActions && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" suppressHydrationWarning={true}>
                   {headerActions}
                 </div>
               )}
@@ -52,7 +52,7 @@ export function PageLayout({
         )}
 
         {/* Content */}
-        <main suppressHydrationWarning>
+        <main suppressHydrationWarning={true}>
           {children}
         </main>
       </div>
