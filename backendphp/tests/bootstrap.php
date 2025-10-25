@@ -1,36 +1,14 @@
 <?php
-// Autoload classes
-spl_autoload_register(function ($class) {
-    $prefix = 'App\\';
-    $base_dir = __DIR__ . '/../app/';
 
-    $len = strlen($prefix);
-    if (strncmp($prefix, $class, $len) !== 0) {
-        return;
-    }
+// Bootstrap file for PHPUnit tests
+require_once __DIR__ . '/../vendor/autoload.php';
 
-    $relative_class = substr($class, $len);
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+// Load environment variables if needed
+if (file_exists(__DIR__ . '/../.env')) {
+    // You might want to load .env here if using vlucas/phpdotenv
+}
 
-    if (file_exists($file)) {
-        require $file;
-    }
-});
+// Set up any global test configuration
+define('TESTING', true);
 
-// Autoload test classes
-spl_autoload_register(function ($class) {
-    $prefix = 'Tests\\';
-    $base_dir = __DIR__ . '/';
-
-    $len = strlen($prefix);
-    if (strncmp($prefix, $class, $len) !== 0) {
-        return;
-    }
-
-    $relative_class = substr($class, $len);
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-
-    if (file_exists($file)) {
-        require $file;
-    }
-});
+// You can add database setup, mock configurations, etc. here

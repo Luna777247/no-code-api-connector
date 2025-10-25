@@ -5,7 +5,10 @@ use App\Config\Database;
 
 class ConnectionRepository
 {
-    private const COLLECTION = 'api_connections';
+    private function getCollectionName(): string
+    {
+        return getenv('API_CONNECTIONS_COLLECTION') ?: 'api_connections';
+    }
 
     public function findAll(): array
     {
@@ -22,7 +25,7 @@ class ConnectionRepository
                 'limit' => 200,
                 'maxTimeMS' => 15000 // 15 second timeout
             ]);
-            $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
+            $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
             $out = [];
             foreach ($cursor as $doc) $out[] = $this->normalize($doc);
             return $out;
@@ -50,7 +53,7 @@ class ConnectionRepository
                 'limit' => $limit,
                 'maxTimeMS' => 10000 // 10 second timeout
             ]);
-            $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
+            $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
             $out = [];
             foreach ($cursor as $doc) $out[] = $this->normalize($doc);
             return $out;
@@ -69,9 +72,15 @@ class ConnectionRepository
         $db = Database::mongoDbName();
         if (!$manager || !$db) return null;
 
-        $filter = ['_id' => new \MongoDB\BSON\ObjectId($id)];
+        try {
+            $filter = ['_id' => new \MongoDB\BSON\ObjectId($id)];
+        } catch (\MongoDB\Driver\Exception\InvalidArgumentException $e) {
+            // Invalid ObjectId format, return null
+            return null;
+        }
+        
         $query = new \MongoDB\Driver\Query($filter, ['limit' => 1]);
-        $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
+        $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
         $docs = $cursor->toArray();
         if (!$docs) return null;
         return $this->normalize($docs[0]);
@@ -90,7 +99,7 @@ class ConnectionRepository
                 'limit' => 1,
                 'maxTimeMS' => 5000 // 5 second timeout
             ]);
-            $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
+            $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
             $docs = $cursor->toArray();
             if (!$docs) return null;
             return $this->normalize($docs[0]);
@@ -106,9 +115,26 @@ class ConnectionRepository
         $db = Database::mongoDbName();
         if (!$manager || !$db) return null;
 
+        // Check for duplicate connection based on name and baseUrl
+        $name = $data['name'] ?? '';
+        $baseUrl = $data['apiConfig']['baseUrl'] ?? ($data['baseUrl'] ?? '');
+        if ($name && $baseUrl) {
+            $filter = [
+                'name' => $name,
+                'apiConfig.baseUrl' => $baseUrl
+            ];
+            $query = new \MongoDB\Driver\Query($filter, ['limit' => 1]);
+            $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
+            $existing = $cursor->toArray();
+            if ($existing) {
+                // Duplicate found, return null or throw error
+                return null; // Or throw new Exception('Connection with same name and baseUrl already exists');
+            }
+        }
+
         $bulk = new \MongoDB\Driver\BulkWrite();
         $id = $bulk->insert($data + ['createdAt' => date('c')]);
-        $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
+        $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
         $data['_id'] = (string)$id;
         return $this->normalize($data);
     }
@@ -122,7 +148,7 @@ class ConnectionRepository
 
         $bulk = new \MongoDB\Driver\BulkWrite();
         $bulk->update(['_id' => new \MongoDB\BSON\ObjectId($id)], ['$set' => $data]);
-        $result = $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
+        $result = $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
         return $result->getModifiedCount() >= 0;
     }
 
@@ -135,7 +161,7 @@ class ConnectionRepository
 
         $bulk = new \MongoDB\Driver\BulkWrite();
         $bulk->delete(['_id' => new \MongoDB\BSON\ObjectId($id)], ['limit' => 1]);
-        $result = $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
+        $result = $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
         return $result->getDeletedCount() > 0;
     }
 

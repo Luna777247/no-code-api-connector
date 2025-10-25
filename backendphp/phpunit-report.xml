@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\project\no-code-api-connector\backendphp\phpunit.xml" tests="4" assertions="7" errors="0" failures="0" skipped="0" time="0.007719">
+    <testsuite name="Unit" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.006667">
+      <testsuite name="Tests\Unit\ExampleTest" file="D:\project\no-code-api-connector\backendphp\tests\Unit\ExampleTest.php" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.006667">
+        <testcase name="test_that_true_is_true" file="D:\project\no-code-api-connector\backendphp\tests\Unit\ExampleTest.php" line="12" class="Tests\Unit\ExampleTest" classname="Tests.Unit.ExampleTest" assertions="1" time="0.006067"/>
+        <testcase name="test_basic_arithmetic" file="D:\project\no-code-api-connector\backendphp\tests\Unit\ExampleTest.php" line="20" class="Tests\Unit\ExampleTest" classname="Tests.Unit.ExampleTest" assertions="2" time="0.000600"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="2" assertions="4" errors="0" failures="0" skipped="0" time="0.001052">
+      <testsuite name="Tests\Feature\ExampleFeatureTest" file="D:\project\no-code-api-connector\backendphp\tests\Feature\ExampleFeatureTest.php" tests="2" assertions="4" errors="0" failures="0" skipped="0" time="0.001052">
+        <testcase name="test_application_can_handle_requests" file="D:\project\no-code-api-connector\backendphp\tests\Feature\ExampleFeatureTest.php" line="12" class="Tests\Feature\ExampleFeatureTest" classname="Tests.Feature.ExampleFeatureTest" assertions="1" time="0.000148"/>
+        <testcase name="test_connection_can_be_created" file="D:\project\no-code-api-connector\backendphp\tests\Feature\ExampleFeatureTest.php" line="23" class="Tests\Feature\ExampleFeatureTest" classname="Tests.Feature.ExampleFeatureTest" assertions="3" time="0.000903"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

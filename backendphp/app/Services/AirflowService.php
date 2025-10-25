@@ -11,7 +11,10 @@ class AirflowService
 
     public function __construct()
     {
-        $this->airflowUrl = getenv('AIRFLOW_WEBSERVER_URL') ?: 'http://airflow:8080';
+        $appEnv = getenv('APP_ENV') ?: 'development';
+        $defaultUrl = ($appEnv === 'production') ? 'http://airflow:8080' : 'http://localhost:8080';
+
+        $this->airflowUrl = getenv('AIRFLOW_WEBSERVER_URL') ?: $defaultUrl;
         $this->airflowUsername = getenv('AIRFLOW_USERNAME') ?: 'airflow';
         $this->airflowPassword = getenv('AIRFLOW_PASSWORD') ?: 'airflow';
     }

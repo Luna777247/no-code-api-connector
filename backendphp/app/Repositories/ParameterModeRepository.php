@@ -5,7 +5,10 @@ use App\Config\Database;
 
 class ParameterModeRepository
 {
-    private const COLLECTION = 'parameter_modes';
+    private function getCollectionName(): string
+    {
+        return getenv('PARAMETER_MODES_COLLECTION') ?: 'parameter_modes';
+    }
 
     public function findAll(): array
     {
@@ -17,7 +20,7 @@ class ParameterModeRepository
         if (!$manager || !$db) return [];
 
         $query = new \MongoDB\Driver\Query([], ['sort' => ['_id' => -1]]);
-        $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
+        $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
         $out = [];
         foreach ($cursor as $doc) $out[] = $this->normalize($doc);
         return $out;
@@ -32,7 +35,7 @@ class ParameterModeRepository
 
         $filter = ['_id' => new \MongoDB\BSON\ObjectId($id)];
         $query = new \MongoDB\Driver\Query($filter, ['limit' => 1]);
-        $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
+        $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
         $docs = $cursor->toArray();
         if (!$docs) return null;
         return $this->normalize($docs[0]);
@@ -47,7 +50,7 @@ class ParameterModeRepository
 
         $bulk = new \MongoDB\Driver\BulkWrite();
         $id = $bulk->insert($data + ['createdAt' => date('c')]);
-        $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
+        $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
         return $this->findById((string)$id);
     }
 
@@ -61,7 +64,7 @@ class ParameterModeRepository
         $bulk = new \MongoDB\Driver\BulkWrite();
         $filter = ['_id' => new \MongoDB\BSON\ObjectId($id)];
         $bulk->update($filter, ['$set' => $data + ['updatedAt' => date('c')]]);
-        $result = $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
+        $result = $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
         return $result->getModifiedCount() > 0;
     }
 
@@ -75,7 +78,7 @@ class ParameterModeRepository
         $bulk = new \MongoDB\Driver\BulkWrite();
         $filter = ['_id' => new \MongoDB\BSON\ObjectId($id)];
         $bulk->delete($filter);
-        $result = $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
+        $result = $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
         return $result->getDeletedCount() > 0;
     }
 

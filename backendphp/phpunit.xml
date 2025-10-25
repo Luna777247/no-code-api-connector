@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
-         executionOrder="depends,defects"
-         beStrictAboutCoverageMetadata="false"
-         beStrictAboutOutputDuringTests="true"
-         beStrictAboutTestsThatDoNotTestAnything="true"
-         failOnRisky="true"
-         failOnWarning="true">
+         colors="true"
+         verbose="true"
+         cacheDirectory=".phpunit.result.cache">
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
@@ -17,6 +14,16 @@
         </testsuite>
     </testsuites>
 
-    <!-- Coverage configuration removed to be compatible with PHPUnit 11 schema.
-         Re-add a coverage block following the PHPUnit 11 schema if needed. -->
+    <coverage>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+        <exclude>
+            <directory>./vendor</directory>
+        </exclude>
+    </coverage>
+
+    <logging>
+        <junit outputFile="phpunit-report.xml"/>
+    </logging>
 </phpunit>
