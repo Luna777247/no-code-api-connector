@@ -9,7 +9,7 @@ class HttpException extends AppException
 {
     protected $statusCode;
 
-    public function __construct(string $message = "HTTP request failed", int $statusCode = 0, array $context = [], int $code = 0, \Throwable $previous = null)
+    public function __construct(string $message = "HTTP request failed", int $statusCode = 0, array $context = [], int $code = 0, ?\Throwable $previous = null)
     {
         $this->statusCode = $statusCode;
         $context['statusCode'] = $statusCode;

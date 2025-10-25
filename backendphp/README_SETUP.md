@@ -119,7 +119,7 @@ maximum_page_limit = 100
 ## 5. Chạy server PHP
 
 ```powershell
-php -S localhost:8000
+php -S localhost:8000 -t public
 ```
 
 - Backend API: http://localhost:8000
@@ -131,6 +131,7 @@ php -S localhost:8000
 
 ```powershell
 cd D:\project\no-code-api-connector\backendphp
+composer require --dev "phpunit/phpunit:^10"
 php vendor/bin/phpunit
 ```
 
