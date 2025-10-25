@@ -187,8 +187,8 @@ export default function SchedulesPage() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {filteredSchedules.map((schedule) => (
-            <Card key={schedule.id}>
+          {filteredSchedules.map((schedule, index) => (
+            <Card key={`${schedule.id}-${index}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
