@@ -42,7 +42,7 @@ npm run start
 
 5) Môi trường & ports
 - Dev server mặc định: http://localhost:3000 (hoặc 3001 theo script `start`) — kiểm tra output của `npm run dev` để biết port chính xác.
-- Nếu frontend cần gọi backend local, đảm bảo backend PHP đang chạy (ví dụ `php -S localhost:8000 -t public`).
+- Nếu frontend cần gọi backend local, đảm bảo backend PHP đang chạy (`php -S localhost:8000 -t public`).
 - Nếu cần cấu hình biến môi trường, tạo `.env.local` bên trong `frontendphp/` theo nhu cầu (Next.js loads `.env.local`).
 
 6) Vấn đề phổ biến
@@ -54,10 +54,6 @@ npm run start
 
 8) Tài nguyên và notes
 - `package.json` chứa scripts chính: `dev`, `build`, `start`.
-
-Nếu bạn muốn, tôi có thể:
-- Thêm một script PowerShell `start-frontend.ps1` để khởi dev server với envs đã cấu hình.
-- Cập nhật README với các lệnh debug cụ thể hoặc setup proxy đến backend.
 
 ---
 Cập nhật lần cuối: 2025-10-25
