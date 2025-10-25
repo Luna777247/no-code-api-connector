@@ -1,9 +1,17 @@
 <?php
 namespace App\Support;
 
+use App\Config\AppConfig;
+use App\Exceptions\HttpException;
+
 class HttpClient
 {
-    public function request(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 30): array
+    private function getDefaultTimeout(): int
+    {
+        return AppConfig::getHttpRequestTimeout();
+    }
+
+    public function request(string $method, string $url, array $headers = [], ?string $body = null, ?int $timeout = null): array
     {
         $ch = curl_init();
         $method = strtoupper($method ?: 'GET');
@@ -30,6 +38,11 @@ class HttpClient
             }
         }
 
+        // Use default timeout if not specified
+        if ($timeout === null) {
+            $timeout = $this->getDefaultTimeout();
+        }
+
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -51,13 +64,29 @@ class HttpClient
         curl_close($ch);
 
         if ($errno) {
-            return [
-                'ok' => false,
-                'status' => 0,
-                'statusText' => $error ?: 'Network error',
-                'headers' => [],
-                'body' => null,
-            ];
+            throw new HttpException(
+                "HTTP request failed: {$error}",
+                0,
+                [
+                    'method' => $method,
+                    'url' => $url,
+                    'timeout' => $timeout,
+                    'curl_errno' => $errno
+                ]
+            );
+        }
+
+        // Check for HTTP error status codes
+        if ($status >= 400) {
+            throw new HttpException(
+                "HTTP {$status} error",
+                $status,
+                [
+                    'method' => $method,
+                    'url' => $url,
+                    'response_body' => $responseBody
+                ]
+            );
         }
 
         return [

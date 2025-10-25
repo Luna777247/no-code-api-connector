@@ -1,22 +1,20 @@
 from airflow import DAG
-from airflow.operators.http import SimpleHttpOperator
+from airflow.providers.http.operators.http import HttpOperator
 from airflow.operators.python import PythonOperator
-from airflow.utils.dates import days_ago
-from datetime import timedelta
+from datetime import timedelta, datetime
 import json
 import os
 import sys
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 
-sys.path.insert(0, '/opt/bitnami/airflow/project')
-
-from app.Repositories.ScheduleRepository import ScheduleRepository
-from app.Repositories.RunRepository import RunRepository
+sys.path.insert(0, '/opt/airflow/dags')
 
 default_args = {
     'owner': 'airflow',
     'retries': 3,
     'retry_delay': timedelta(minutes=5),
-    'start_date': days_ago(1),
+    'start_date': datetime(2024, 1, 1),
 }
 
 def create_api_execution_dag(schedule_id, connection_id, api_url, method='GET', headers=None, auth=None):
@@ -41,8 +39,19 @@ def create_api_execution_dag(schedule_id, connection_id, api_url, method='GET', 
     def after_execute(response, **context):
         """Save execution result to MongoDB"""
         try:
-            run_repo = RunRepository()
-            
+            # Get MongoDB connection details from environment
+            mongo_uri = os.getenv('MONGODB_URI')
+            mongo_db = os.getenv('MONGODB_DATABASE', 'api_connector')
+
+            if not mongo_uri:
+                print("[Airflow] MONGODB_URI not set, skipping result save")
+                return
+
+            # Connect to MongoDB
+            client = MongoClient(mongo_uri)
+            db = client[mongo_db]
+            collection = db['api_runs']
+
             result = {
                 'scheduleId': schedule_id,
                 'connectionId': connection_id,
@@ -53,10 +62,15 @@ def create_api_execution_dag(schedule_id, connection_id, api_url, method='GET', 
                 'executedAt': context['execution_date'].isoformat(),
                 'triggeredBy': 'airflow_scheduler',
             }
-            
-            run_repo.insert(result)
+
+            collection.insert_one(result)
             print(f"[Airflow] Execution result saved: {result['status']}")
-            
+
+            # Close connection
+            client.close()
+
+        except PyMongoError as e:
+            print(f"[Airflow] MongoDB error saving result: {str(e)}")
         except Exception as e:
             print(f"[Airflow] Error saving execution result: {str(e)}")
             raise
@@ -69,7 +83,7 @@ def create_api_execution_dag(schedule_id, connection_id, api_url, method='GET', 
     )
     
     # HTTP call task
-    http_task = SimpleHttpOperator(
+    http_task = HttpOperator(
         task_id='execute_api',
         http_conn_id='api_connection',
         endpoint=api_url,

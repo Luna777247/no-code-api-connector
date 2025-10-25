@@ -1,19 +1,25 @@
 <?php
 namespace App\Services;
 
-use Exception;
+use App\Config\AppConfig;
+use App\Exceptions\AirflowException;
+use App\Support\HttpClient;
 
 class AirflowService
 {
     private string $airflowUrl;
     private string $airflowUsername;
     private string $airflowPassword;
+    private HttpClient $httpClient;
 
     public function __construct()
     {
-        $this->airflowUrl = getenv('AIRFLOW_WEBSERVER_URL') ?: 'http://airflow:8080';
-        $this->airflowUsername = getenv('AIRFLOW_USERNAME') ?: 'airflow';
-        $this->airflowPassword = getenv('AIRFLOW_PASSWORD') ?: 'airflow';
+        $defaultUrl = AppConfig::isProduction() ? 'http://airflow:8080' : 'http://localhost:8080';
+
+        $this->airflowUrl = AppConfig::getAirflowWebserverUrl() ?: $defaultUrl;
+        $this->airflowUsername = AppConfig::getAirflowUsername();
+        $this->airflowPassword = AppConfig::getAirflowPassword();
+        $this->httpClient = new HttpClient();
     }
 
     /**
@@ -23,24 +29,28 @@ class AirflowService
     {
         try {
             $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}/dagRuns";
-            
+
             $payload = [
                 'conf' => $config,
                 'execution_date' => date('c'),
             ];
-            
+
             $response = $this->makeRequest('POST', $url, $payload);
-            
+
             return [
                 'success' => true,
                 'dagRunId' => $response['dag_run_id'] ?? null,
                 'state' => $response['state'] ?? 'queued',
             ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
+        } catch (AirflowException $e) {
+            throw $e; // Re-throw AirflowException
+        } catch (\Throwable $e) {
+            throw new AirflowException(
+                "Failed to trigger DAG run: " . $e->getMessage(),
+                $dagId,
+                null,
+                ['original_exception' => get_class($e)]
+            );
         }
     }
 
@@ -52,18 +62,22 @@ class AirflowService
         try {
             $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}";
             $response = $this->makeRequest('GET', $url);
-            
+
             return [
                 'success' => true,
                 'dagId' => $response['dag_id'] ?? $dagId,
                 'isPaused' => $response['is_paused'] ?? false,
                 'lastScheduledRun' => $response['last_scheduled_run'] ?? null,
             ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
+        } catch (AirflowException $e) {
+            throw $e; // Re-throw AirflowException
+        } catch (\Throwable $e) {
+            throw new AirflowException(
+                "Failed to get DAG status: " . $e->getMessage(),
+                $dagId,
+                null,
+                ['original_exception' => get_class($e)]
+            );
         }
     }
 
@@ -75,7 +89,7 @@ class AirflowService
         try {
             $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}/dagRuns?limit={$limit}";
             $response = $this->makeRequest('GET', $url);
-            
+
             $runs = [];
             foreach ($response['dag_runs'] ?? [] as $run) {
                 $runs[] = [
@@ -86,16 +100,20 @@ class AirflowService
                     'duration' => $this->calculateDuration($run['start_date'] ?? null, $run['end_date'] ?? null),
                 ];
             }
-            
+
             return [
                 'success' => true,
                 'runs' => $runs,
             ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
+        } catch (AirflowException $e) {
+            throw $e; // Re-throw AirflowException
+        } catch (\Throwable $e) {
+            throw new AirflowException(
+                "Failed to get DAG run history: " . $e->getMessage(),
+                $dagId,
+                null,
+                ['original_exception' => get_class($e), 'limit' => $limit]
+            );
         }
     }
 
@@ -106,19 +124,23 @@ class AirflowService
     {
         try {
             $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}";
-            
+
             $payload = ['is_paused' => true];
             $response = $this->makeRequest('PATCH', $url, $payload);
-            
+
             return [
                 'success' => true,
                 'isPaused' => $response['is_paused'] ?? true,
             ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
+        } catch (AirflowException $e) {
+            throw $e; // Re-throw AirflowException
+        } catch (\Throwable $e) {
+            throw new AirflowException(
+                "Failed to pause DAG: " . $e->getMessage(),
+                $dagId,
+                null,
+                ['original_exception' => get_class($e)]
+            );
         }
     }
 
@@ -129,19 +151,23 @@ class AirflowService
     {
         try {
             $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}";
-            
+
             $payload = ['is_paused' => false];
             $response = $this->makeRequest('PATCH', $url, $payload);
-            
+
             return [
                 'success' => true,
                 'isPaused' => $response['is_paused'] ?? false,
             ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
+        } catch (AirflowException $e) {
+            throw $e; // Re-throw AirflowException
+        } catch (\Throwable $e) {
+            throw new AirflowException(
+                "Failed to resume DAG: " . $e->getMessage(),
+                $dagId,
+                null,
+                ['original_exception' => get_class($e)]
+            );
         }
     }
 
@@ -150,28 +176,56 @@ class AirflowService
      */
     private function makeRequest(string $method, string $url, array $data = []): array
     {
-        $ch = curl_init();
-        
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, "{$this->airflowUsername}:{$this->airflowPassword}");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        
-        if (!empty($data)) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: Basic ' . base64_encode("{$this->airflowUsername}:{$this->airflowPassword}")
+        ];
+
+        try {
+            $response = $this->httpClient->request($method, $url, $headers, !empty($data) ? json_encode($data) : null);
+
+            if (!$response['ok']) {
+                throw new AirflowException(
+                    "Airflow API returned HTTP {$response['status']}: {$response['statusText']}",
+                    null,
+                    null,
+                    [
+                        'method' => $method,
+                        'url' => $url,
+                        'status' => $response['status'],
+                        'response_body' => $response['body']
+                    ]
+                );
+            }
+
+            $decodedResponse = json_decode($response['body'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new AirflowException(
+                    "Invalid JSON response from Airflow API: " . json_last_error_msg(),
+                    null,
+                    null,
+                    [
+                        'method' => $method,
+                        'url' => $url,
+                        'response_body' => $response['body']
+                    ]
+                );
+            }
+
+            return $decodedResponse ?? [];
+        } catch (\App\Exceptions\HttpException $e) {
+            throw new AirflowException(
+                "HTTP error communicating with Airflow: " . $e->getMessage(),
+                null,
+                null,
+                [
+                    'method' => $method,
+                    'url' => $url,
+                    'original_exception' => get_class($e),
+                    'status_code' => $e->getStatusCode()
+                ]
+            );
         }
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode >= 400) {
-            throw new Exception("Airflow API error: HTTP {$httpCode}");
-        }
-        
-        return json_decode($response, true) ?? [];
     }
 
     /**

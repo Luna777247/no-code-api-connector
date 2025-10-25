@@ -9,6 +9,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// Load environment variables
+require_once __DIR__ . '/../vendor/autoload.php';
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
+
 // Minimal autoloader for classes under app/
 spl_autoload_register(function ($class) {
     $prefix = 'App\\';

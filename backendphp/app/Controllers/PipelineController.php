@@ -34,6 +34,7 @@ class PipelineController
         // In a real pipeline we would expand parameters, fan-out requests, transform & load.
         // Here we execute a single request to validate connectivity and create a run record.
         $res = $this->http->request($method, $url, $headers, null, 30);
+        $body = $res['body'] ?? null;
 
         $runId = $this->runs->create([
             'connectionId' => $connectionId,
@@ -42,6 +43,7 @@ class PipelineController
             'duration' => null,
             'recordsExtracted' => null,
             'errorMessage' => $res['ok'] ? null : ($res['statusText'] ?? 'Request failed'),
+            'response' => $body,
         ]);
 
         return [
