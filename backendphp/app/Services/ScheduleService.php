@@ -40,4 +40,54 @@ class ScheduleService
         }
         return $items;
     }
+
+    public function createSchedule(array $input): ?array
+    {
+        $data = [
+            'connectionId' => $input['connectionId'] ?? '',
+            'connectionName' => $input['connectionName'] ?? '',
+            'description' => $input['description'] ?? '',
+            'scheduleType' => $input['scheduleType'] ?? 'cron',
+            'cronExpression' => $input['cronExpression'] ?? '* * * * *',
+            'isActive' => (bool)($input['isActive'] ?? true),
+            'nextRun' => null,
+            'lastRun' => null,
+            'lastStatus' => 'pending',
+            'totalRuns' => 0,
+        ];
+
+        $result = $this->repo->insert($data);
+        if ($result) {
+            $result['id'] = $result['_id'];
+            unset($result['_id']);
+        }
+        return $result;
+    }
+
+    public function updateSchedule(string $id, array $input): bool
+    {
+        $data = [];
+        if (isset($input['isActive'])) {
+            $data['isActive'] = (bool)$input['isActive'];
+        }
+        if (isset($input['cronExpression'])) {
+            $data['cronExpression'] = $input['cronExpression'];
+        }
+        if (isset($input['connectionName'])) {
+            $data['connectionName'] = $input['connectionName'];
+        }
+        if (isset($input['description'])) {
+            $data['description'] = $input['description'];
+        }
+        if (isset($input['scheduleType'])) {
+            $data['scheduleType'] = $input['scheduleType'];
+        }
+
+        return $this->repo->update($id, $data);
+    }
+
+    public function deleteSchedule(string $id): bool
+    {
+        return $this->repo->delete($id);
+    }
 }

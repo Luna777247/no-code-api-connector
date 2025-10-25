@@ -5,7 +5,10 @@ use App\Config\Database;
 
 class ScheduleRepository
 {
-    private const COLLECTION = 'api_schedules';
+    private function getCollectionName(): string
+    {
+        return getenv('API_SCHEDULES_COLLECTION') ?: 'api_schedules';
+    }
 
     public function findAll(): array
     {
@@ -26,7 +29,7 @@ class ScheduleRepository
                 'limit' => 100,
                 'maxTimeMS' => 10000 // 10 second timeout
             ]);
-            $cursor = $manager->executeQuery($dbName . '.' . self::COLLECTION, $query);
+            $cursor = $manager->executeQuery($dbName . '.' . $this->getCollectionName(), $query);
 
             $items = [];
             foreach ($cursor as $doc) {
@@ -58,7 +61,7 @@ class ScheduleRepository
                 ['$set' => ['dagId' => $dagId, 'updatedAt' => new \MongoDB\BSON\UTCDateTime()]],
                 ['upsert' => false]
             );
-            $manager->executeBulkWrite($dbName . '.' . self::COLLECTION, $bulk);
+            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
             return true;
         } catch (\Throwable $e) {
             return false;
@@ -80,12 +83,60 @@ class ScheduleRepository
         try {
             $bulk = new \MongoDB\Driver\BulkWrite();
             $id = $bulk->insert($data + ['createdAt' => date('c')]);
-            $manager->executeBulkWrite($dbName . '.' . self::COLLECTION, $bulk);
+            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
             
             $data['_id'] = (string)$id;
             return $this->normalizeDocument($data);
         } catch (\Throwable $e) {
             return null;
+        }
+    }
+
+    public function update(string $id, array $data): bool
+    {
+        if (!class_exists('MongoDB\\Driver\\Manager')) {
+            return false;
+        }
+
+        $manager = Database::mongoManager();
+        $dbName = Database::mongoDbName();
+        if (!$manager || !$dbName) {
+            return false;
+        }
+
+        try {
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->update(
+                ['_id' => new \MongoDB\BSON\ObjectId($id)],
+                ['$set' => $data + ['updatedAt' => new \MongoDB\BSON\UTCDateTime()]],
+                ['upsert' => false]
+            );
+            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    public function delete(string $id): bool
+    {
+        if (!class_exists('MongoDB\\Driver\\Manager')) {
+            return false;
+        }
+
+        $manager = Database::mongoManager();
+        $dbName = Database::mongoDbName();
+        if (!$manager || !$dbName) {
+            return false;
+        }
+
+        try {
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->delete(['_id' => new \MongoDB\BSON\ObjectId($id)]);
+            $manager->executeBulkWrite($dbName . '.' . $this->getCollectionName(), $bulk);
+            return true;
+        } catch (\Throwable $e) {
+            return false;
         }
     }
 

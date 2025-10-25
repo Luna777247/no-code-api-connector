@@ -5,7 +5,10 @@ use App\Config\Database;
 
 class RunRepository
 {
-    private const COLLECTION = 'api_runs';
+    private function getCollectionName(): string
+    {
+        return getenv('API_RUNS_COLLECTION') ?: 'api_runs';
+    }
 
     public function findAll(int $limit = 200): array
     {
@@ -14,7 +17,7 @@ class RunRepository
         $db = Database::mongoDbName();
         if (!$manager || !$db) return [];
         $query = new \MongoDB\Driver\Query([], ['sort' => ['_id' => -1], 'limit' => $limit]);
-        $cursor = $manager->executeQuery($db . '.' . self::COLLECTION, $query);
+        $cursor = $manager->executeQuery($db . '.' . $this->getCollectionName(), $query);
         $out = [];
         foreach ($cursor as $doc) $out[] = $this->normalize($doc);
         return $out;
@@ -28,7 +31,7 @@ class RunRepository
         if (!$manager || !$db) return [];
         $filter = ['connectionId' => $connectionId];
         $query = new \MongoDB\Driver\Query($filter, ['sort' => ['_id' => -1], 'limit' => $limit]);
-        $cursor = $manager->executeQuery($db.'.'.self::COLLECTION, $query);
+        $cursor = $manager->executeQuery($db.'.'.$this->getCollectionName(), $query);
         $out = [];
         foreach ($cursor as $doc) $out[] = $this->normalize($doc);
         return $out;
@@ -42,7 +45,7 @@ class RunRepository
         if (!$manager || !$db) return uniqid('run_', true);
         $bulk = new \MongoDB\Driver\BulkWrite();
         $id = $bulk->insert($data + ['createdAt' => date('c')]);
-        $manager->executeBulkWrite($db.'.'.self::COLLECTION, $bulk);
+        $manager->executeBulkWrite($db.'.'.$this->getCollectionName(), $bulk);
         return (string)$id;
     }
 
