@@ -37,7 +37,7 @@ export default function NewConnectionPage() {
     parameters: [],
     dataMapping: {
       selectedFields: [],
-      tableName: "api_places_standardized",
+      tableName: "api_places",
     },
     schedule: {
       enabled: false,

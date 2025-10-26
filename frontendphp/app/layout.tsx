@@ -21,43 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/*
-          Synchronous, safe cleanup to remove attributes injected by browser
-          extensions (eg. bis_skin_checked, bis_register, data-bis-*, __processed_*)
-          before React hydrates. Avoids invalid CSS/selectors like `[data-bis-*]`.
-        */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(){
-                try {
-                  var els = document.getElementsByTagName('*');
-                  for (var i = 0; i < els.length; i++) {
-                    var el = els[i];
-                    // collect names to remove to avoid mutating NamedNodeMap while iterating
-                    var toRemove = [];
-                    for (var j = 0; j < el.attributes.length; j++) {
-                      var name = el.attributes[j].name;
-                      if (
-                        name === 'bis_skin_checked' ||
-                        name === 'bis_register' ||
-                        name.indexOf('data-bis-') === 0 ||
-                        name.indexOf('__processed_') === 0
-                      ) {
-                        toRemove.push(name);
-                      }
-                    }
-                    for (var k = 0; k < toRemove.length; k++) {
-                      try { el.removeAttribute(toRemove[k]); } catch(e) {}
-                    }
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
       </head>
-      <body className={`font-sans antialiased`}>
+      <body className={`font-sans antialiased`} suppressHydrationWarning>
         <div>
           {children}
         </div>
