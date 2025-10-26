@@ -25,40 +25,6 @@ export default function DataPage() {
 
   useEffect(() => {
     console.log('Fetching data...')
-    // Temporarily use mock data to test rendering
-    const mockData = {
-      summary: {
-        totalRuns: 6,
-        totalRecords: 0,
-        avgExecutionTime: 0,
-        estimatedDataSize: "0 bytes"
-      },
-      connectionBreakdown: [
-        {
-          connectionId: "conn_1761241715858_q619f16it",
-          connectionName: "default-application_11168091",
-          runCount: 3,
-          totalRecords: 0,
-          avgExecutionTime: 0,
-          lastRun: "2025-10-23T19:49:37+02:00"
-        },
-        {
-          connectionId: "conn_1761241241112_9yeknan12",
-          connectionName: "distanceto",
-          runCount: 3,
-          totalRecords: 0,
-          avgExecutionTime: 0,
-          lastRun: "2025-10-23T19:41:27+02:00"
-        }
-      ],
-      data: []
-    }
-    console.log('Using mock data:', mockData)
-    setData(mockData)
-    setFilteredData(mockData)
-    setLoading(false)
-
-    /*
     apiClient
       .get("/api/data")
       .then((res) => {
@@ -76,7 +42,6 @@ export default function DataPage() {
         setError("Failed to load data")
         setLoading(false)
       })
-    */
   }, [])
 
   useEffect(() => {
@@ -118,7 +83,8 @@ export default function DataPage() {
   const uniqueConnections = [...new Set(connections)]
 
   return (
-    <PageLayout title="Data Explorer" description="Browse and export extracted data" showBackButton={true}>
+    <div suppressHydrationWarning>
+      <PageLayout title="Data Explorer" description="Browse and export extracted data" showBackButton={true}>
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="space-y-4">
@@ -249,5 +215,6 @@ export default function DataPage() {
         </>
       )}
     </PageLayout>
+    </div>
   )
 }
