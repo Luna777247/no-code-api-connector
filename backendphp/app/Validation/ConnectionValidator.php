@@ -81,6 +81,42 @@ class ConnectionValidator extends BaseValidator
             $this->validateScheduleData($data['schedule']);
         }
 
+        // Parameters validation
+        if (isset($data['parameters'])) {
+            $this->validateArray('parameters', $data['parameters'], 0, 100); // Max 100 parameters
+            if (is_array($data['parameters'])) {
+                foreach ($data['parameters'] as $key => $param) {
+                    if (is_array($param)) {
+                        if (isset($param['name'])) {
+                            $this->validateStringLength("parameters.{$key}.name", $this->sanitizeString($param['name']), 1, 100);
+                        }
+                        if (isset($param['type'])) {
+                            $allowedTypes = ['query', 'header', 'body', 'path'];
+                            $this->validateInArray("parameters.{$key}.type", $param['type'], $allowedTypes);
+                        }
+                        if (isset($param['mode'])) {
+                            $allowedModes = ['single', 'list', 'range'];
+                            $this->validateInArray("parameters.{$key}.mode", $param['mode'], $allowedModes);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Field mappings validation
+        if (isset($data['fieldMappings'])) {
+            $this->validateArray('fieldMappings', $data['fieldMappings'], 0, 200); // Max 200 field mappings
+        }
+
+        // Table name validation
+        if (isset($data['tableName'])) {
+            $this->validateStringLength('tableName', $this->sanitizeString($data['tableName']), 1, 100);
+            // Validate table name format (alphanumeric, underscore, dash)
+            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*$/', $data['tableName'])) {
+                $this->errors['tableName'] = 'Table name must start with a letter and contain only letters, numbers, underscores, and dashes';
+            }
+        }
+
         // Boolean validations
         if (isset($data['isActive'])) {
             $this->validateBoolean('isActive', $data['isActive']);
@@ -171,6 +207,42 @@ class ConnectionValidator extends BaseValidator
         // Schedule validation
         if (isset($data['schedule'])) {
             $this->validateScheduleData($data['schedule']);
+        }
+
+        // Parameters validation
+        if (isset($data['parameters'])) {
+            $this->validateArray('parameters', $data['parameters'], 0, 100); // Max 100 parameters
+            if (is_array($data['parameters'])) {
+                foreach ($data['parameters'] as $key => $param) {
+                    if (is_array($param)) {
+                        if (isset($param['name'])) {
+                            $this->validateStringLength("parameters.{$key}.name", $this->sanitizeString($param['name']), 1, 100);
+                        }
+                        if (isset($param['type'])) {
+                            $allowedTypes = ['query', 'header', 'body', 'path'];
+                            $this->validateInArray("parameters.{$key}.type", $param['type'], $allowedTypes);
+                        }
+                        if (isset($param['mode'])) {
+                            $allowedModes = ['single', 'list', 'range'];
+                            $this->validateInArray("parameters.{$key}.mode", $param['mode'], $allowedModes);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Field mappings validation
+        if (isset($data['fieldMappings'])) {
+            $this->validateArray('fieldMappings', $data['fieldMappings'], 0, 200); // Max 200 field mappings
+        }
+
+        // Table name validation
+        if (isset($data['tableName'])) {
+            $this->validateStringLength('tableName', $this->sanitizeString($data['tableName']), 1, 100);
+            // Validate table name format (alphanumeric, underscore, dash)
+            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*$/', $data['tableName'])) {
+                $this->errors['tableName'] = 'Table name must start with a letter and contain only letters, numbers, underscores, and dashes';
+            }
         }
 
         // Boolean validations

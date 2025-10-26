@@ -44,6 +44,7 @@ class ConnectionService
                 'connectionName' => $data['name'] ?? 'Unnamed Connection',
                 'scheduleType' => $data['schedule']['type'] ?? 'daily',
                 'cronExpression' => $data['schedule']['cronExpression'] ?? '0 0 * * *',
+                'timezone' => $data['schedule']['timezone'] ?? 'Asia/Ho_Chi_Minh',
                 'isActive' => true,
                 'createdAt' => date('c'),
             ];
@@ -93,6 +94,9 @@ class ConnectionService
             'method' => $row['apiConfig']['method'] ?? ($row['method'] ?? 'GET'),
             'headers' => $row['apiConfig']['headers'] ?? ($row['headers'] ?? []),
             'authType' => $row['apiConfig']['authType'] ?? ($row['authType'] ?? 'none'),
+            'parameters' => $row['parameters'] ?? [],
+            'fieldMappings' => $row['fieldMappings'] ?? [],
+            'tableName' => $row['tableName'] ?? 'api_data',
             'isActive' => (bool)($row['isActive'] ?? true),
             'createdAt' => $row['createdAt'] ?? date('c'),
             'lastRun' => $row['lastRun'] ?? null,
