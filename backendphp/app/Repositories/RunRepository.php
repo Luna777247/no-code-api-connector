@@ -34,6 +34,19 @@ class RunRepository extends BaseRepository
         }
     }
 
+    public function findByScheduleId(string $scheduleId, int $limit = 50, int $offset = 0): array
+    {
+        try {
+            return $this->findWithPagination(
+                ['scheduleId' => $scheduleId],
+                ['limit' => $limit, 'skip' => $offset, 'sort' => ['createdAt' => -1]]
+            );
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
+            return [];
+        }
+    }
+
     public function findById(string $id): ?array
     {
         try {

@@ -67,6 +67,6 @@ class AdminRoleController
 
     public function permissions(): array
     {
-        return $this->service->listPermissions();
+        return $this->service->getPermissions();
     }
 }

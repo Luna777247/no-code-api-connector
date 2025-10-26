@@ -53,6 +53,7 @@ $router->get('/api/analytics/success-rate-history', [new AnalyticsController(), 
 // ============================================
 // INTEGRATOR APIs (New - Schedule Management)
 // ============================================
+$router->get('/api/schedules/{id}', [new ScheduleManagementController(), 'show']);
 $router->post('/api/schedules', [new ScheduleManagementController(), 'create']);
 $router->put('/api/schedules/{id}', [new ScheduleManagementController(), 'update']);
 $router->delete('/api/schedules/{id}', [new ScheduleManagementController(), 'delete']);

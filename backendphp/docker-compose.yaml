@@ -55,7 +55,7 @@ x-airflow-common:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.default'
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
@@ -136,6 +136,31 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+
+  token-refresher:
+    image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.0}
+    environment:
+      <<: *airflow-common-env
+    volumes:
+      # mount repository root (compose file dir) so the token file and .env are written to host
+      - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow/host
+    depends_on:
+      - airflow-apiserver
+    command: >
+      /bin/bash -c "while true; do
+        resp=$(curl -s -X POST 'http://airflow-apiserver:8080/auth/token' -H 'Content-Type: application/json' -d '{\"username\":\"${_AIRFLOW_WWW_USER_USERNAME:-airflow}\",\"password\":\"${_AIRFLOW_WWW_USER_PASSWORD:-airflow}\"}');
+        echo \"$resp\" > /opt/airflow/host/access_token.json;
+        token=$(echo \"$resp\" | python -c 'import sys,json;print(json.load(sys.stdin).get("access_token",""))');
+        if [ -n \"$token\" ]; then
+          if [ -f /opt/airflow/host/.env ]; then
+            awk -v t=\"$token\" 'BEGIN{found=0} /^AIRFLOW_ACCESS_TOKEN=/{print \"AIRFLOW_ACCESS_TOKEN=\"t; found=1; next} {print} END{if(!found) print \"AIRFLOW_ACCESS_TOKEN=\"t}' /opt/airflow/host/.env > /opt/airflow/host/.env.tmp && mv /opt/airflow/host/.env.tmp /opt/airflow/host/.env;
+          else
+            echo \"AIRFLOW_ACCESS_TOKEN=$token\" > /opt/airflow/host/.env;
+          fi
+        fi;
+        sleep 3300;
+      done"
+    restart: always
 
   airflow-scheduler:
     <<: *airflow-common

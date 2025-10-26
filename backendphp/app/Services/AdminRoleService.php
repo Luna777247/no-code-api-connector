@@ -35,9 +35,13 @@ class AdminRoleService
         ]);
     }
 
-    public function updateRole(string $id, array $data): bool
+    public function updateRole(string $id, array $data): array
     {
-        return true;
+        // Basic implementation - return updated role data
+        return array_merge($data, [
+            'id' => $id,
+            'updatedAt' => date('c')
+        ]);
     }
 
     public function deleteRole(string $id): bool

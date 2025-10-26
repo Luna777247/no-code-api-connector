@@ -30,9 +30,13 @@ class ParameterModeService
         return $saved ? $this->normalize($saved) : null;
     }
 
-    public function updateMode(string $id, array $data): bool
+    public function updateMode(string $id, array $data): ?array
     {
-        return $this->repo->update($id, $data);
+        $updated = $this->repo->update($id, $data);
+        if ($updated) {
+            return $this->getMode($id);
+        }
+        return null;
     }
 
     public function deleteMode(string $id): bool

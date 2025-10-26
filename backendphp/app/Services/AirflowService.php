@@ -10,6 +10,7 @@ class AirflowService
     private string $airflowUrl;
     private string $airflowUsername;
     private string $airflowPassword;
+    private ?string $airflowToken = null;
     private HttpClient $httpClient;
 
     public function __construct()
@@ -19,6 +20,7 @@ class AirflowService
         $this->airflowUrl = AppConfig::getAirflowWebserverUrl() ?: $defaultUrl;
         $this->airflowUsername = AppConfig::getAirflowUsername();
         $this->airflowPassword = AppConfig::getAirflowPassword();
+        $this->airflowToken = getenv('AIRFLOW_ACCESS_TOKEN') ?: getenv('AIRFLOW_TOKEN') ?: null;
         $this->httpClient = new HttpClient();
     }
 
@@ -28,19 +30,21 @@ class AirflowService
     public function triggerDagRun(string $dagId, array $config = []): array
     {
         try {
-            $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}/dagRuns";
+            // Airflow 3+ uses /api/v2
+            $url = "{$this->airflowUrl}/api/v2/dags/{$dagId}/dagRuns";
 
             $payload = [
                 'conf' => $config,
-                'execution_date' => date('c'),
+                // provide a client-side run id for traceability
+                'dag_run_id' => 'run_' . time(),
             ];
 
             $response = $this->makeRequest('POST', $url, $payload);
 
             return [
                 'success' => true,
-                'dagRunId' => $response['dag_run_id'] ?? null,
-                'state' => $response['state'] ?? 'queued',
+                'dagRunId' => $response['dag_run_id'] ?? $response['dag_run_id'] ?? null,
+                'state' => $response['state'] ?? $response['state'] ?? 'queued',
             ];
         } catch (AirflowException $e) {
             throw $e; // Re-throw AirflowException
@@ -60,7 +64,7 @@ class AirflowService
     public function getDagStatus(string $dagId): array
     {
         try {
-            $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}";
+            $url = "{$this->airflowUrl}/api/v2/dags/{$dagId}";
             $response = $this->makeRequest('GET', $url);
 
             return [
@@ -87,7 +91,7 @@ class AirflowService
     public function getDagRunHistory(string $dagId, int $limit = 10): array
     {
         try {
-            $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}/dagRuns?limit={$limit}";
+            $url = "{$this->airflowUrl}/api/v2/dags/{$dagId}/dagRuns?limit={$limit}";
             $response = $this->makeRequest('GET', $url);
 
             $runs = [];
@@ -123,7 +127,7 @@ class AirflowService
     public function pauseDag(string $dagId): array
     {
         try {
-            $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}";
+            $url = "{$this->airflowUrl}/api/v2/dags/{$dagId}";
 
             $payload = ['is_paused' => true];
             $response = $this->makeRequest('PATCH', $url, $payload);
@@ -150,7 +154,7 @@ class AirflowService
     public function resumeDag(string $dagId): array
     {
         try {
-            $url = "{$this->airflowUrl}/api/v1/dags/{$dagId}";
+            $url = "{$this->airflowUrl}/api/v2/dags/{$dagId}";
 
             $payload = ['is_paused' => false];
             $response = $this->makeRequest('PATCH', $url, $payload);
@@ -172,14 +176,70 @@ class AirflowService
     }
 
     /**
+     * Get JWT token for Airflow API
+     */
+    private function getToken(): string
+    {
+        if ($this->airflowToken) {
+            return $this->airflowToken;
+        }
+
+        $url = "{$this->airflowUrl}/api/v2/auth/token";
+        $payload = [
+            'username' => $this->airflowUsername,
+            'password' => $this->airflowPassword,
+        ];
+
+        $headers = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ];
+
+        $response = $this->httpClient->request('POST', $url, $headers, json_encode($payload));
+
+        if (!$response['ok']) {
+            throw new AirflowException(
+                "Failed to get Airflow token: HTTP {$response['status']}",
+                null,
+                null,
+                [
+                    'method' => 'POST',
+                    'url' => $url,
+                    'status' => $response['status'],
+                    'response_body' => $response['body']
+                ]
+            );
+        }
+
+        $decoded = json_decode($response['body'], true);
+        if (!isset($decoded['access_token'])) {
+            throw new AirflowException(
+                "Invalid token response from Airflow",
+                null,
+                null,
+                [
+                    'response_body' => $response['body']
+                ]
+            );
+        }
+
+        $this->airflowToken = $decoded['access_token'];
+        return $this->airflowToken;
+    }
+
+    /**
      * Make HTTP request to Airflow API
      */
     private function makeRequest(string $method, string $url, array $data = []): array
     {
         $headers = [
             'Content-Type: application/json',
-            'Authorization: Basic ' . base64_encode("{$this->airflowUsername}:{$this->airflowPassword}")
+            'Accept: application/json',
         ];
+
+        // No auth for dev
+        // $token = $this->getToken();
+        // $headers[] = 'Authorization: Bearer ' . $token;
 
         try {
             $response = $this->httpClient->request($method, $url, $headers, !empty($data) ? json_encode($data) : null);

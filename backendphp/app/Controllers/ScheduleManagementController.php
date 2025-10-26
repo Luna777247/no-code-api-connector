@@ -38,6 +38,15 @@ class ScheduleManagementController
             $dagId = "api_schedule_{$scheduleId}";
             $this->scheduleRepo->saveDagId($scheduleId, $dagId);
             $result['dagId'] = $dagId;
+            // Best-effort: trigger the sync DAG in Airflow so registration happens immediately
+            try {
+                // ask Airflow to run the sync job which reads schedules from MongoDB
+                $this->airflowService->triggerDagRun('api_schedule_sync', ['scheduleId' => $scheduleId]);
+                $result['airflowSyncTriggered'] = true;
+            } catch (\Throwable $e) {
+                // ignore errors - schedule creation should not fail because Airflow is unavailable
+                $result['airflowSyncTriggered'] = false;
+            }
         }
 
         return $result;
@@ -62,6 +71,16 @@ class ScheduleManagementController
             return ['error' => 'Failed to delete schedule'];
         }
         return ['ok' => true];
+    }
+
+    public function show(string $id): array
+    {
+        $schedule = $this->service->getSchedule($id);
+        if (!$schedule) {
+            http_response_code(404);
+            return ['error' => 'Schedule not found'];
+        }
+        return $schedule;
     }
 
     public function history(string $id): array

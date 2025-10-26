@@ -58,12 +58,12 @@ class AppConfig
 
     public static function getAirflowUsername(): string
     {
-        return getenv('AIRFLOW_USERNAME') ?: 'airflow';
+        return getenv('AIRFLOW_USERNAME') ?: 'admin';
     }
 
     public static function getAirflowPassword(): string
     {
-        return getenv('AIRFLOW_PASSWORD') ?: 'airflow';
+        return getenv('AIRFLOW_PASSWORD') ?: 'admin';
     }
 
     // Application Environment
