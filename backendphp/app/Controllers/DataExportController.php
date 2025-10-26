@@ -40,6 +40,6 @@ class DataExportController
 
         header('Content-Type: ' . $file['mimeType']);
         header('Content-Disposition: attachment; filename="' . $file['filename'] . '"');
-        readfile($file['path']);
+        echo $file['data'];
     }
 }

@@ -46,7 +46,7 @@ function Load-EnvFile($path) {
                 $val = $val.Substring(1, $val.Length - 2)
             }
             Write-Host "  Setting: $key"
-            $env:$key = $val
+            Set-Item -Path "Env:$key" -Value $val
         }
     }
 }

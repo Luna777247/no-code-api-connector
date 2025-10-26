@@ -98,6 +98,24 @@ class ScheduleRepository extends BaseRepository
         }
     }
 
+    public function findById(string $id): ?array
+    {
+        try {
+            $objectId = new \MongoDB\BSON\ObjectId($id);
+        } catch (\MongoDB\Driver\Exception\InvalidArgumentException $e) {
+            throw new DatabaseException(
+                "Invalid document ID format",
+                ['id' => $id],
+                0,
+                $e
+            );
+        }
+
+        $results = $this->findWithPagination(['_id' => $objectId], ['limit' => 1]);
+
+        return $results[0] ?? null;
+    }
+
     protected function normalizeDocument($document): array
     {
         // Convert BSON document/stdClass to array recursively and string-cast ObjectId

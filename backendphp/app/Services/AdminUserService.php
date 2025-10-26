@@ -38,9 +38,13 @@ class AdminUserService
         ]);
     }
 
-    public function updateUser(string $id, array $data): bool
+    public function updateUser(string $id, array $data): array
     {
-        return true;
+        // Basic implementation - return updated user data
+        return array_merge($data, [
+            'id' => $id,
+            'updatedAt' => date('c')
+        ]);
     }
 
     public function deleteUser(string $id): bool

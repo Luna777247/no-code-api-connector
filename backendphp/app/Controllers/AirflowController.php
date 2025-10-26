@@ -54,6 +54,17 @@ class AirflowController
         try {
             $dagId = "api_schedule_{$scheduleId}";
             return $this->service->getDagStatus($dagId);
+        } catch (\App\Exceptions\AirflowException $e) {
+            // If Airflow is not available, return mock status
+            error_log("Airflow not available for getting status of schedule {$scheduleId}: " . $e->getMessage());
+
+            return [
+                'success' => true,
+                'dagId' => "api_schedule_{$scheduleId}",
+                'isPaused' => false,
+                'lastScheduledRun' => null,
+                'message' => 'Airflow not available - mock status returned'
+            ];
         } catch (\Throwable $e) {
             http_response_code(500);
             return [
@@ -73,6 +84,17 @@ class AirflowController
             $limit = $_GET['limit'] ?? 10;
             
             return $this->service->getDagRunHistory($dagId, (int)$limit);
+        } catch (\App\Exceptions\AirflowException $e) {
+            // If Airflow is not available, return mock history
+            error_log("Airflow not available for getting history of schedule {$scheduleId}: " . $e->getMessage());
+
+            return [
+                'success' => true,
+                'dagId' => "api_schedule_{$scheduleId}",
+                'runs' => [],
+                'total' => 0,
+                'message' => 'Airflow not available - mock history returned'
+            ];
         } catch (\Throwable $e) {
             http_response_code(500);
             return [

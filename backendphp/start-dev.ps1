@@ -29,6 +29,24 @@ try {
     Write-Host "Warning: Airflow UI may not be ready yet. Check http://localhost:8080" -ForegroundColor Yellow
 }
 
+# Refresh Airflow API token (writes to backendphp/.env and access_token.json)
+$refreshScript = Join-Path $PSScriptRoot 'scripts\refresh_airflow_token.ps1'
+if (Test-Path $refreshScript) {
+    Write-Host "Refreshing Airflow access token..." -ForegroundColor Cyan
+    # Run once (foreground) to ensure token exists
+    & $refreshScript
+
+    # Start background job to refresh periodically (runs until this script exits)
+    try {
+        Start-Job -Name RefreshAirflowToken -ScriptBlock { param($s) & $s -Loop } -ArgumentList $refreshScript | Out-Null
+        Write-Host "Started background token refresher job 'RefreshAirflowToken'" -ForegroundColor Cyan
+    } catch {
+        Write-Host "Could not start background token refresher job: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Token refresh script not found: $refreshScript" -ForegroundColor Yellow
+}
+
 # Start PHP server
 Write-Host "Starting PHP development server..." -ForegroundColor Yellow
 Write-Host "Backend API will be available at: http://localhost:8000" -ForegroundColor Green

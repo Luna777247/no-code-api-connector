@@ -12,10 +12,8 @@ class DataController
     {
         $this->connectionRepo = new ConnectionRepository();
     }
-    public function index(): void
+    public function index(): array
     {
-        header('Content-Type: application/json');
-
         // Try to read from runs; if unavailable, return safe mock
         $repo = new RunRepository();
         $connectionRepo = new ConnectionRepository();
@@ -67,7 +65,7 @@ class DataController
 
         $connectionBreakdown = $this->enrichWithConnectionNames(array_values($byConnection));
 
-        echo json_encode([
+        return [
             'summary' => [
                 'totalRuns' => $totalRuns,
                 'totalRecords' => $totalRecords,
@@ -76,7 +74,7 @@ class DataController
             ],
             'connectionBreakdown' => $connectionBreakdown,
             'data' => [],
-        ]);
+        ];
     }
 
     private function enrichWithConnectionNames(array $connections): array
