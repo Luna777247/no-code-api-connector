@@ -11,6 +11,11 @@
     }
   },
   "scripts": {
+    "test": "phpunit",
+    "test:unit": "phpunit --testsuite Unit",
+    "test:feature": "phpunit --testsuite Feature",
+    "test:coverage": "phpunit --coverage-html coverage",
+    "test:coverage-text": "phpunit --coverage-text"
   },
   "require-dev": {
     "phpunit/phpunit": "10"
