@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,8 +19,10 @@ import apiClient from "../../services/apiClient.js"
 export function ScheduleFormDialog({ schedule, onSave, trigger }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [connections, setConnections] = useState([])
   const [formData, setFormData] = useState(
     schedule || {
+      connectionId: "",
       connectionName: "",
       description: "",
       scheduleType: "cron",
@@ -28,6 +30,50 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
       isActive: true,
     },
   )
+
+  useEffect(() => {
+    if (open) {
+      fetchConnections()
+    }
+    // Reset form data when dialog opens with a schedule
+    if (schedule) {
+      setFormData({
+        connectionId: schedule.connectionId || "",
+        connectionName: schedule.connectionName || "",
+        description: schedule.description || "",
+        scheduleType: schedule.scheduleType || "cron",
+        cronExpression: schedule.cronExpression || "0 0 * * *",
+        isActive: schedule.isActive ?? true,
+      })
+    } else {
+      setFormData({
+        connectionId: "",
+        connectionName: "",
+        description: "",
+        scheduleType: "cron",
+        cronExpression: "0 0 * * *",
+        isActive: true,
+      })
+    }
+  }, [open, schedule])
+
+  const fetchConnections = async () => {
+    try {
+      const response = await apiClient.get("/api/connections")
+      setConnections(response.data || [])
+    } catch (err) {
+      console.error("[v0] Error fetching connections:", err)
+    }
+  }
+
+  const handleConnectionChange = (connectionId) => {
+    const connection = connections.find(c => c.id === connectionId || c._id === connectionId)
+    setFormData({
+      ...formData,
+      connectionId: connectionId,
+      connectionName: connection ? connection.name || connection.connectionName || `${connection.method} ${connection.endpoint}` : "",
+    })
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -59,13 +105,23 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="connectionName">Connection Name</Label>
-            <Input
-              id="connectionName"
-              value={formData.connectionName}
-              onChange={(e) => setFormData({ ...formData, connectionName: e.target.value })}
+            <Label htmlFor="connectionId">Connection</Label>
+            <Select
+              value={formData.connectionId}
+              onValueChange={handleConnectionChange}
               required
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a connection" />
+              </SelectTrigger>
+              <SelectContent>
+                {connections.map((connection) => (
+                  <SelectItem key={connection.id || connection._id} value={connection.id || connection._id}>
+                    {connection.name || connection.connectionName || `${connection.method} ${connection.endpoint}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="description">Description</Label>
