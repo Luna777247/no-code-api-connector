@@ -30,7 +30,8 @@ class ScheduleService
             $nextRun = $row['nextRun'] ?? null;
             if ($nextRun === null && ($row['isActive'] ?? false)) {
                 $cronExpr = $row['cronExpression'] ?? '* * * * *';
-                $nextRun = $this->calculateNextRunTime($cronExpr);
+                $timezone = $row['timezone'] ?? 'Asia/Ho_Chi_Minh';
+                $nextRun = $this->calculateNextRunTime($cronExpr, $timezone);
                 // Optionally update the database with the calculated next run time
                 if ($nextRun) {
                     $this->repo->update($id, ['nextRun' => $nextRun]);
@@ -43,6 +44,7 @@ class ScheduleService
                 'connectionName' => $row['connectionName'] ?? 'Unknown',
                 'scheduleType' => $row['scheduleType'] ?? 'custom',
                 'cronExpression' => $row['cronExpression'] ?? '* * * * *',
+                'timezone' => $row['timezone'] ?? 'Asia/Ho_Chi_Minh',
                 'isActive' => (bool)($row['isActive'] ?? false),
                 'nextRun' => $nextRun,
                 'lastRun' => $row['lastRun'] ?? null,
@@ -61,6 +63,7 @@ class ScheduleService
             'description' => $input['description'] ?? '',
             'scheduleType' => $input['scheduleType'] ?? 'cron',
             'cronExpression' => $input['cronExpression'] ?? '* * * * *',
+            'timezone' => $input['timezone'] ?? 'Asia/Ho_Chi_Minh', // Default to Vietnam timezone
             'isActive' => (bool)($input['isActive'] ?? true),
             'nextRun' => null,
             'lastRun' => null,
@@ -70,7 +73,7 @@ class ScheduleService
 
         // Calculate next run time if active
         if ($data['isActive']) {
-            $data['nextRun'] = $this->calculateNextRunTime($data['cronExpression']);
+            $data['nextRun'] = $this->calculateNextRunTime($data['cronExpression'], $data['timezone']);
         }
 
         $result = $this->repo->insert($data);
@@ -99,17 +102,21 @@ class ScheduleService
         if (isset($input['scheduleType'])) {
             $data['scheduleType'] = $input['scheduleType'];
         }
+        if (isset($input['timezone'])) {
+            $data['timezone'] = $input['timezone'];
+        }
 
-        // If isActive or cronExpression changed, recalculate next run time
-        $shouldRecalculateNextRun = isset($input['isActive']) || isset($input['cronExpression']);
+        // If isActive, cronExpression, or timezone changed, recalculate next run time
+        $shouldRecalculateNextRun = isset($input['isActive']) || isset($input['cronExpression']) || isset($input['timezone']);
         if ($shouldRecalculateNextRun) {
-            // Get current schedule to check if it will be active
+            // Get current schedule to check if it will be active and get timezone
             $currentSchedule = $this->repo->findById($id);
             $willBeActive = isset($input['isActive']) ? (bool)$input['isActive'] : ($currentSchedule['isActive'] ?? false);
             $cronExpr = $input['cronExpression'] ?? ($currentSchedule['cronExpression'] ?? '* * * * *');
+            $timezone = $input['timezone'] ?? ($currentSchedule['timezone'] ?? 'Asia/Ho_Chi_Minh');
 
             if ($willBeActive) {
-                $data['nextRun'] = $this->calculateNextRunTime($cronExpr);
+                $data['nextRun'] = $this->calculateNextRunTime($cronExpr, $timezone);
             } else {
                 $data['nextRun'] = null;
             }
@@ -118,7 +125,7 @@ class ScheduleService
         return $this->repo->update($id, $data);
     }
 
-    private function calculateNextRunTime(string $cronExpression): ?string
+    private function calculateNextRunTime(string $cronExpression, string $timezone = 'UTC'): ?string
     {
         try {
             // Parse cron expression: minute hour day month weekday
@@ -133,12 +140,12 @@ class ScheduleService
             $month = $parts[3];
             $weekday = $parts[4];
 
-            $now = new DateTime();
+            $now = new DateTime('now', new \DateTimeZone($timezone));
             $nextRun = clone $now;
 
             // Handle different cron patterns
             if ($cronExpression === '0 15 * * *') {
-                // Daily at 3:15 PM
+                // Daily at 3:15 PM in the specified timezone
                 $nextRun->setTime(15, 0, 0);
                 if ($nextRun <= $now) {
                     $nextRun->modify('+1 day');
@@ -160,7 +167,9 @@ class ScheduleService
                 $nextRun->modify('+1 hour');
             }
 
-            return $nextRun->format('c'); // ISO 8601 format
+            // Return in UTC for storage, but calculated in the specified timezone
+            $nextRun->setTimezone(new \DateTimeZone('UTC'));
+            return $nextRun->format('c'); // ISO 8601 format in UTC
         } catch (\Exception $e) {
             return null;
         }
@@ -190,6 +199,7 @@ class ScheduleService
             'connectionName' => $row['connectionName'] ?? 'Unknown',
             'scheduleType' => $row['scheduleType'] ?? 'custom',
             'cronExpression' => $row['cronExpression'] ?? '* * * * *',
+            'timezone' => $row['timezone'] ?? 'Asia/Ho_Chi_Minh',
             'isActive' => (bool)($row['isActive'] ?? false),
             'nextRun' => $row['nextRun'] ?? null,
             'lastRun' => $row['lastRun'] ?? null,
