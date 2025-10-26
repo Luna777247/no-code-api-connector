@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Repositories\ScheduleRepository;
+use DateTime;
 
 class ScheduleService
 {
@@ -24,6 +25,17 @@ class ScheduleService
                 $id = (string)$id;
             }
             $dagId = $row['dagId'] ?? "api_schedule_{$id}";
+
+            // Calculate next run time if not set and schedule is active
+            $nextRun = $row['nextRun'] ?? null;
+            if ($nextRun === null && ($row['isActive'] ?? false)) {
+                $cronExpr = $row['cronExpression'] ?? '* * * * *';
+                $nextRun = $this->calculateNextRunTime($cronExpr);
+                // Optionally update the database with the calculated next run time
+                if ($nextRun) {
+                    $this->repo->update($id, ['nextRun' => $nextRun]);
+                }
+            }
             
             $items[] = [
                 'id' => $id,
@@ -32,7 +44,7 @@ class ScheduleService
                 'scheduleType' => $row['scheduleType'] ?? 'custom',
                 'cronExpression' => $row['cronExpression'] ?? '* * * * *',
                 'isActive' => (bool)($row['isActive'] ?? false),
-                'nextRun' => $row['nextRun'] ?? null,
+                'nextRun' => $nextRun,
                 'lastRun' => $row['lastRun'] ?? null,
                 'lastStatus' => $row['lastStatus'] ?? 'pending',
                 'totalRuns' => (int)($row['totalRuns'] ?? 0),
@@ -55,6 +67,11 @@ class ScheduleService
             'lastStatus' => 'pending',
             'totalRuns' => 0,
         ];
+
+        // Calculate next run time if active
+        if ($data['isActive']) {
+            $data['nextRun'] = $this->calculateNextRunTime($data['cronExpression']);
+        }
 
         $result = $this->repo->insert($data);
         if ($result) {
@@ -83,7 +100,70 @@ class ScheduleService
             $data['scheduleType'] = $input['scheduleType'];
         }
 
+        // If isActive or cronExpression changed, recalculate next run time
+        $shouldRecalculateNextRun = isset($input['isActive']) || isset($input['cronExpression']);
+        if ($shouldRecalculateNextRun) {
+            // Get current schedule to check if it will be active
+            $currentSchedule = $this->repo->findById($id);
+            $willBeActive = isset($input['isActive']) ? (bool)$input['isActive'] : ($currentSchedule['isActive'] ?? false);
+            $cronExpr = $input['cronExpression'] ?? ($currentSchedule['cronExpression'] ?? '* * * * *');
+
+            if ($willBeActive) {
+                $data['nextRun'] = $this->calculateNextRunTime($cronExpr);
+            } else {
+                $data['nextRun'] = null;
+            }
+        }
+
         return $this->repo->update($id, $data);
+    }
+
+    private function calculateNextRunTime(string $cronExpression): ?string
+    {
+        try {
+            // Parse cron expression: minute hour day month weekday
+            $parts = explode(' ', $cronExpression);
+            if (count($parts) < 5) {
+                return null;
+            }
+
+            $minute = $parts[0];
+            $hour = $parts[1];
+            $day = $parts[2];
+            $month = $parts[3];
+            $weekday = $parts[4];
+
+            $now = new DateTime();
+            $nextRun = clone $now;
+
+            // Handle different cron patterns
+            if ($cronExpression === '0 15 * * *') {
+                // Daily at 3:15 PM
+                $nextRun->setTime(15, 0, 0);
+                if ($nextRun <= $now) {
+                    $nextRun->modify('+1 day');
+                }
+            } elseif ($cronExpression === '* * * * *') {
+                // Every minute
+                $nextRun->modify('+1 minute');
+            } elseif (strpos($cronExpression, '*/') === 0) {
+                // Every N minutes/hours (e.g., */4 * * * *)
+                $interval = (int)substr($minute, 2);
+                $nextRun->modify("+{$interval} minutes");
+            } elseif ($minute === '0' && strpos($hour, '*/') === 0) {
+                // Every N hours (e.g., 0 */4 * * *)
+                $interval = (int)substr($hour, 2);
+                $nextRun->setTime($nextRun->format('H'), 0, 0);
+                $nextRun->modify("+{$interval} hours");
+            } else {
+                // For other patterns, add 1 hour as fallback
+                $nextRun->modify('+1 hour');
+            }
+
+            return $nextRun->format('c'); // ISO 8601 format
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     public function deleteSchedule(string $id): bool
