@@ -33,15 +33,35 @@ class PipelineController
 
         // In a real pipeline we would expand parameters, fan-out requests, transform & load.
         // Here we execute a single request to validate connectivity and create a run record.
+        $startTime = microtime(true);
         $res = $this->http->request($method, $url, $headers, null, 30);
+        $endTime = microtime(true);
         $body = $res['body'] ?? null;
+
+        // Calculate execution time in milliseconds
+        $executionTime = round(($endTime - $startTime) * 1000);
+
+        // Calculate records processed from response body
+        $recordsProcessed = 0;
+        if ($res['ok'] && $body) {
+            $decodedBody = json_decode($body, true);
+            if (is_array($decodedBody)) {
+                $recordsProcessed = count($decodedBody);
+            }
+        }
 
         $runId = $this->runs->create([
             'connectionId' => $connectionId,
-            'status' => $res['ok'] ? 'completed' : 'failed',
+            'status' => $res['ok'] ? 'success' : 'failed',
             'startedAt' => date('c'),
-            'duration' => null,
-            'recordsExtracted' => null,
+            'completedAt' => date('c'),
+            'executionTime' => $executionTime,
+            'apiUrl' => $url,
+            'method' => $method,
+            'successfulRequests' => $res['ok'] ? 1 : 0,
+            'totalRequests' => 1,
+            'recordsProcessed' => $recordsProcessed, // Calculate from response body
+            'failedRequests' => $res['ok'] ? 0 : 1,
             'errorMessage' => $res['ok'] ? null : ($res['statusText'] ?? 'Request failed'),
             'response' => $body,
         ]);

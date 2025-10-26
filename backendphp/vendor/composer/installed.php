@@ -3,7 +3,7 @@
         'name' => 'luna777247/backend-php',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '7e78811cf68c91de547b99d52a9ad52a48f7b0a3',
+        'reference' => 'bb3d41bb6e3ae43b66d07ce268892af595b274d8',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'luna777247/backend-php' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '7e78811cf68c91de547b99d52a9ad52a48f7b0a3',
+            'reference' => 'bb3d41bb6e3ae43b66d07ce268892af595b274d8',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

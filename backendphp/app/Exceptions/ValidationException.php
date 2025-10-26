@@ -9,7 +9,7 @@ class ValidationException extends AppException
 {
     protected $errors = [];
 
-    public function __construct(array $errors = [], string $message = "Validation failed", array $context = [], int $code = 0, \Throwable $previous = null)
+    public function __construct(array $errors = [], string $message = "Validation failed", array $context = [], int $code = 0, ?\Throwable $previous = null)
     {
         $this->errors = $errors;
         $context['validationErrors'] = $errors;

@@ -30,7 +30,7 @@ class RunService
     private function enrichWithConnectionNames(array $runs): array
     {
         $connectionNames = [];
-        
+
         foreach ($runs as &$run) {
             $connectionId = $run['connectionId'] ?? '';
             if ($connectionId && !isset($connectionNames[$connectionId])) {
@@ -42,8 +42,21 @@ class RunService
                 }
             }
             $run['connectionName'] = $connectionNames[$connectionId] ?? 'Unknown Connection';
+
+            // Add fields that frontend expects
+            $run['executionTime'] = $run['executionTime'] ?? $run['duration'] ?? null;
+            $run['completedAt'] = $run['completedAt'] ?? null;
+            $run['successfulRequests'] = $run['successfulRequests'] ?? ($run['status'] === 'success' ? 1 : 0);
+            $run['totalRequests'] = $run['totalRequests'] ?? 1;
+            $run['recordsProcessed'] = $run['recordsProcessed'] ?? $run['recordsExtracted'] ?? 0;
+            $run['failedRequests'] = $run['failedRequests'] ?? ($run['status'] === 'failed' ? 1 : 0);
+            $run['metadata'] = [
+                'apiUrl' => $run['apiUrl'] ?? '',
+                'method' => $run['method'] ?? 'GET'
+            ];
+            $run['errors'] = $run['errorMessage'] ? [$run['errorMessage']] : null;
         }
-        
+
         return $runs;
     }
 

@@ -1,31 +1,35 @@
 "use client"
 
-import { use } from "react"
+import { use, useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, Database, FileJson } from "lucide-react"
+import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, Database, FileJson, Clock, Loader2 } from "lucide-react"
 import { BackToHomeButton } from "@/components/ui/back-to-home-button"
+import apiClient from "../../../services/apiClient.js"
 
 export default function RunDetailPage({ params }) {
   const { id } = use(params)
-  const run = {
-    id: id,
-    connectionName: "JSONPlaceholder Users API",
-    status: "success",
-    startedAt: new Date(Date.now() - 3600000),
-    completedAt: new Date(Date.now() - 3000000),
-    duration: "10m 0s",
-    totalRequests: 10,
-    successfulRequests: 10,
-    failedRequests: 0,
-    recordsExtracted: 100,
-    recordsLoaded: 100,
-  }
+  const [run, setRun] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
+  useEffect(() => {
+    apiClient.get(`/api/runs/${id}`)
+      .then(res => {
+        setRun(res.data)
+        setLoading(false)
+      })
+      .catch(err => {
+        setError('Failed to load run details')
+        setLoading(false)
+      })
+  }, [id])
+
+  // Mock data for logs and requests (since backend doesn't provide these yet)
   const logs = [
     { id: 1, level: "info", message: "Starting API run", timestamp: new Date(Date.now() - 3600000) },
     { id: 2, level: "info", message: "Executing request 1/10", timestamp: new Date(Date.now() - 3540000) },
@@ -58,22 +62,47 @@ export default function RunDetailPage({ params }) {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <BackToHomeButton />
-            <Button variant="ghost" asChild className="gap-2">
-              <Link href="/runs">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Runs
-              </Link>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-12 w-12 text-muted-foreground mb-4 animate-spin" />
+            <p className="text-muted-foreground">Loading run details...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <XCircle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Error loading run details</h3>
+            <p className="text-muted-foreground text-center">{error}</p>
+            <Button asChild className="mt-4">
+              <Link href="/runs">Back to Runs</Link>
             </Button>
           </div>
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{run.connectionName}</h1>
-              <p className="text-muted-foreground mt-1">Run ID: {run.id}</p>
-            </div>
-            <Badge variant="default" className="gap-1">
+        ) : !run ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Run not found</h3>
+            <p className="text-muted-foreground text-center">The requested run could not be found.</p>
+            <Button asChild className="mt-4">
+              <Link href="/runs">Back to Runs</Link>
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <BackToHomeButton />
+                <Button variant="ghost" asChild className="gap-2">
+                  <Link href="/runs">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Runs
+                  </Link>
+                </Button>
+              </div>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight">{run.connectionName}</h1>
+                  <p className="text-muted-foreground mt-1">Run ID: {run.id}</p>
+                </div>
+                <Badge variant="default" className="gap-1">
               <CheckCircle2 className="h-4 w-4" />
               {run.status}
             </Badge>
@@ -212,6 +241,8 @@ export default function RunDetailPage({ params }) {
             </Card>
           </TabsContent>
         </Tabs>
+          </>
+        )}
       </div>
     </div>
   )

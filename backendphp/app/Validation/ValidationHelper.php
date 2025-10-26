@@ -15,8 +15,11 @@ class ValidationHelper
     public static function validateRequest(BaseValidator $validator, array $data): array
     {
         if (!$validator->validate($data)) {
+            $errors = $validator->getErrors();
+            error_log('Validation failed. Data: ' . json_encode($data));
+            error_log('Validation errors: ' . json_encode($errors));
             throw new ValidationException(
-                $validator->getErrors(),
+                $errors,
                 'Request validation failed'
             );
         }
