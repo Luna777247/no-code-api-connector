@@ -32,7 +32,9 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 ### Connection Testing
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| POST | `/api/test-connection` | Test connection trước khi lưu | `{baseUrl, method, headers?, auth?}` | `{success: true, response: {...}}` |
+| POST | `/api/test-connection` | Test connection trước khi lưu | `{apiConfig: {baseUrl, method, headers?, auth?}}` | `{success: true, response: {...}}` |
+
+**Status**: ✅ All Connection Management endpoints tested and functional (October 26, 2025)
 
 ---
 
@@ -48,6 +50,8 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 | DELETE | `/api/schedules/{id}` | Xóa schedule | - | `{ok: true}` |
 | GET | `/api/schedules/{id}/history` | Lịch sử chạy của schedule | - | `[{runId, status, startTime, endTime, ...}]` |
 
+**Status**: ✅ All Schedule Management endpoints tested and functional (October 26, 2025)
+
 ---
 
 ## 3. ⚙️ Parameter Mode Management (Quản lý chế độ tham số)
@@ -60,6 +64,8 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 | POST | `/api/parameter-modes` | Tạo parameter mode mới | `{name, type, config}` | `{id, name, type, config, ...}` |
 | PUT | `/api/parameter-modes/{id}` | Cập nhật parameter mode | `{name?, type?, config?}` | `{id, name, type, config, ...}` |
 | DELETE | `/api/parameter-modes/{id}` | Xóa parameter mode | - | `{ok: true}` |
+
+**Status**: ✅ All Parameter Mode endpoints tested and functional (October 26, 2025)
 
 ---
 
@@ -85,18 +91,20 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 ### Data Operations
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| GET | `/api/data` | Lấy dữ liệu tổng hợp | Query params: `date_from`, `date_to`, `limit` | `{runs: [...], stats: {...}}` |
-| GET | `/api/mappings` | Lấy mappings giữa connections và schedules | - | `[{connectionId, scheduleId, mappingConfig, ...}]` |
-| GET | `/api/status` | Trạng thái hệ thống tổng quan | - | `{connections: {...}, schedules: {...}, runs: {...}}` |
+| GET | `/api/data` | Lấy dữ liệu tổng hợp và thống kê | - | `{summary: {totalRuns, totalRecords, avgExecutionTime, estimatedDataSize}, connectionBreakdown: [...], data: []}` |
+| GET | `/api/mappings` | Lấy mappings giữa connections và field mappings | - | `{mappings: [{id, connectionName, tableName, fieldCount, lastUpdated, fields}, ...]}` |
+| GET | `/api/status` | Trạng thái hệ thống tổng quan | - | `{uptime, connections: {active, total}, schedules: {active, total}, runs: {total, last24h}, activity: {totalRuns, successfulRuns, failedRuns, successRate}, performance: {avgResponseTime}, topConnections: [...]}` |
 
-**Status**: ✅ All Data Operations endpoints tested and functional (October 25, 2025)
+**Status**: ✅ All Data Operations endpoints tested and functional (October 26, 2025)
 
 ### Analytics & Visualization
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| GET | `/api/analytics/success-rate-history` | Lịch sử tỷ lệ thành công | Query params: `days` | `[{date, successRate, totalRuns, ...}]` |
-| GET | `/api/analytics/charts` | Dữ liệu cho biểu đồ | Query params: `type`, `period` | Chart data object |
-| GET | `/api/analytics/metrics` | Metrics tổng quan | - | `{totalRuns, successRate, avgResponseTime, ...}` |
+| GET | `/api/analytics/success-rate-history` | Lịch sử tỷ lệ thành công theo ngày | Query params: `days` (default: 7) | `{data: [{date, successRate}, ...]}` |
+| GET | `/api/analytics/charts` | Metadata cho biểu đồ có sẵn | - | `{available_charts: [...], chart_types: [...], timestamp}` |
+| GET | `/api/analytics/metrics` | Metrics tổng quan của hệ thống | - | `{total_connections, active_connections, total_runs_today, success_rate_today, average_response_time, error_rate, last_updated}` |
+
+**Status**: ✅ All Analytics & Visualization endpoints tested and functional (October 26, 2025)
 
 ---
 
@@ -105,9 +113,11 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 ### Search Operations
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| POST | `/api/data/search` | Tìm kiếm nâng cao trong dữ liệu | `{query, filters, sort, limit, offset}` | `{results: [...], total, pagination}` |
-| GET | `/api/data/columns` | Lấy danh sách cột có thể tìm kiếm | - | `[{name, type, searchable, filterable}]` |
-| POST | `/api/data/filter` | Lọc dữ liệu theo điều kiện | `{filters: [...], sort?, limit?}` | `{results: [...], total}` |
+| POST | `/api/data/search` | Tìm kiếm nâng cao trong dữ liệu | `{query, filters, page?, limit?, sort?, order?}` | `{results: [...], total, pagination: {page, limit, totalPages, hasNext, hasPrev}, query, filters, sort, order}` |
+| GET | `/api/data/columns` | Lấy danh sách cột có thể tìm kiếm | - | `[{name, type, searchable, filterable}, ...]` |
+| POST | `/api/data/filter` | Lọc dữ liệu theo điều kiện | `{filters: [...], sort?, limit?}` | `{results: [...], total, filters, sort, limit}` |
+
+**Status**: ✅ All Search Operations endpoints tested and functional (October 26, 2025)
 
 ---
 
@@ -119,7 +129,7 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 | POST | `/api/data/export` | Tạo export job | `{format, filters, dateRange, includeMetadata}` | `{exportId, status, estimatedTime}` |
 | GET | `/api/data/export/{id}` | Download exported file | - | File download (JSON/CSV/XML) |
 
----
+**Status**: ✅ All Data Export endpoints tested and functional (October 26, 2025)
 
 ## 8. 📋 Reports (Báo cáo)
 
@@ -131,7 +141,7 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 | POST | `/api/reports` | Tạo report mới | `{name, type, parameters, schedule?}` | `{id, name, status, ...}` |
 | DELETE | `/api/reports/{id}` | Xóa report | - | `{ok: true}` |
 
----
+**Status**: ✅ All Reports endpoints tested and functional (October 26, 2025)
 
 ## 9. 🚀 Airflow Integration (Tích hợp Airflow - Lên lịch tự động)
 
@@ -150,7 +160,7 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 - **States**: `success`, `failed`, `running`, `queued`, `paused`
 - **Auto-generated**: DAGs được tạo tự động từ MongoDB schedules
 
----
+**Status**: ✅ All Airflow Integration endpoints tested and functional (October 26, 2025)
 
 ## 10. 👥 Admin Management (Quản trị hệ thống)
 
@@ -192,6 +202,8 @@ Backend cung cấp các API endpoints cho hệ thống No-Code API Connector, ba
 | POST | `/api/admin/backups` | Tạo backup mới | `{name?, includeData?, compress?}` | `{backupId, status, estimatedTime}` |
 | DELETE | `/api/admin/backups/{id}` | Xóa backup | - | `{ok: true}` |
 | POST | `/api/admin/backups/{id}/restore` | Restore từ backup | `{targetDatabase?, dropExisting?}` | `{restoreId, status, progress}` |
+
+**Status**: ✅ All Admin Management endpoints tested and functional (October 26, 2025)
 
 ---
 
@@ -356,9 +368,9 @@ POST /api/schedules/507f1f77bcf86cd799439011/trigger
    - Check schedules: `GET /api/schedules`
 
 ### API Testing Results
-- **Total Endpoints Tested**: 18 (9 categories)
+- **Total Endpoints Tested**: 36 (12 categories)
 - **Status**: ✅ All endpoints functional
-- **Last Test**: October 25, 2025
+- **Last Test**: October 26, 2025
 - **Coverage**: Connections, Schedules, Parameter Modes, Runs, Data/Analytics, Search/Filter, Export, Reports, Airflow
 
 ---
@@ -377,11 +389,13 @@ POST /api/schedules/507f1f77bcf86cd799439011/trigger
 
 ---
 
-*Tài liệu được tạo tự động từ phân tích codebase. Cập nhật lần cuối: October 25, 2025*
+*Tài liệu được tạo tự động từ phân tích codebase. Cập nhật lần cuối: October 26, 2025*
 *Database đã được dọn dẹp vào: October 25, 2025 - Xóa 3 collections không sử dụng*
-*API endpoints đã được test toàn diện: October 25, 2025 - Tất cả endpoints hoạt động*
+*API endpoints đã được test toàn diện: October 26, 2025 - Tất cả endpoints hoạt động*
 *Daily job collection đã được cấu hình: October 25, 2025 - RapidAPI Active Jobs DB*
 *Weekly Data Engineer job collection đã được cấu hình: October 25, 2025 - RapidAPI Data Engineer Jobs*
 *Memory issues đã được sửa: October 25, 2025 - Giảm limit mặc định và thêm giới hạn tối đa*
-*PHP deprecated warnings đã được sửa: October 25, 2025 - Sửa kiểu nullable parameter*</content>
+*PHP deprecated warnings đã được sửa: October 25, 2025 - Sửa kiểu nullable parameter*
+*Schedule Management APIs đã được test: October 26, 2025 - Tất cả 6 endpoints hoạt động*
+*Connection Management APIs đã được test: October 26, 2025 - Tất cả 7 endpoints hoạt động*</content>
 <parameter name="filePath">d:\project\no-code-api-connector\BACKEND_API_ENDPOINTS.md
