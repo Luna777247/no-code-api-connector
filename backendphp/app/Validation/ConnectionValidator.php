@@ -17,7 +17,7 @@ class ConnectionValidator extends BaseValidator
 
         // Required fields
         $this->validateRequired('name', $data['name'] ?? null);
-        $this->validateRequired('apiConfig.baseUrl', $data['apiConfig']['baseUrl'] ?? $data['baseUrl'] ?? null);
+        $this->validateRequired('baseUrl', $data['baseUrl'] ?? null);
 
         // String validations
         if (isset($data['name'])) {
@@ -29,29 +29,29 @@ class ConnectionValidator extends BaseValidator
         }
 
         // URL validation
-        $baseUrl = $data['apiConfig']['baseUrl'] ?? $data['baseUrl'] ?? null;
+        $baseUrl = $data['baseUrl'] ?? null;
         if ($baseUrl) {
-            $this->validateUrl('apiConfig.baseUrl', $baseUrl);
+            $this->validateUrl('baseUrl', $baseUrl);
         }
 
         // Method validation
-        $method = $data['apiConfig']['method'] ?? $data['method'] ?? null;
+        $method = $data['method'] ?? null;
         if ($method) {
             $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
-            $this->validateInArray('apiConfig.method', strtoupper($method), $allowedMethods);
+            $this->validateInArray('method', strtoupper($method), $allowedMethods);
         }
 
         // Headers validation
-        $headers = $data['apiConfig']['headers'] ?? $data['headers'] ?? null;
+        $headers = $data['headers'] ?? null;
         if ($headers !== null) {
-            $this->validateArray('apiConfig.headers', $headers, 0, 50); // Max 50 headers
+            $this->validateArray('headers', $headers, 0, 50); // Max 50 headers
 
             if (is_array($headers)) {
                 foreach ($headers as $key => $header) {
                     if (is_array($header) && isset($header['name'])) {
                         $headerName = $this->sanitizeString($header['name']);
                         if (strlen($headerName) > 100) {
-                            $this->errors["apiConfig.headers.{$key}.name"] = "Header name too long";
+                            $this->errors["headers.{$key}.name"] = "Header name too long";
                         }
                     }
                 }
@@ -59,21 +59,21 @@ class ConnectionValidator extends BaseValidator
         }
 
         // Auth type validation
-        $authType = $data['apiConfig']['authType'] ?? $data['authType'] ?? null;
+        $authType = $data['authType'] ?? null;
         if ($authType) {
             $allowedAuthTypes = ['none', 'basic', 'bearer', 'api-key', 'oauth2'];
-            $this->validateInArray('apiConfig.authType', $authType, $allowedAuthTypes);
+            $this->validateInArray('authType', $authType, $allowedAuthTypes);
         }
 
         // Auth config validation based on auth type
         if ($authType === 'basic') {
-            $this->validateRequired('apiConfig.authConfig.username', $data['apiConfig']['authConfig']['username'] ?? null);
-            $this->validateRequired('apiConfig.authConfig.password', $data['apiConfig']['authConfig']['password'] ?? null);
+            $this->validateRequired('authConfig.username', $data['authConfig']['username'] ?? null);
+            $this->validateRequired('authConfig.password', $data['authConfig']['password'] ?? null);
         } elseif ($authType === 'bearer') {
-            $this->validateRequired('apiConfig.authConfig.token', $data['apiConfig']['authConfig']['token'] ?? null);
+            $this->validateRequired('authConfig.token', $data['authConfig']['token'] ?? null);
         } elseif ($authType === 'api-key') {
-            $this->validateRequired('apiConfig.authConfig.key', $data['apiConfig']['authConfig']['key'] ?? null);
-            $this->validateRequired('apiConfig.authConfig.value', $data['apiConfig']['authConfig']['value'] ?? null);
+            $this->validateRequired('authConfig.key', $data['authConfig']['key'] ?? null);
+            $this->validateRequired('authConfig.value', $data['authConfig']['value'] ?? null);
         }
 
         // Schedule validation
@@ -139,7 +139,8 @@ class ConnectionValidator extends BaseValidator
             $this->validateInArray('schedule.type', $schedule['type'], $allowedTypes);
         }
 
-        if (isset($schedule['cronExpression'])) {
+        // Only validate cron expression if schedule is enabled
+        if (isset($schedule['enabled']) && $schedule['enabled'] && isset($schedule['cronExpression'])) {
             $this->validateCronExpression('schedule.cronExpression', $schedule['cronExpression']);
         }
 
@@ -168,29 +169,26 @@ class ConnectionValidator extends BaseValidator
         }
 
         // URL validation
-        if (isset($data['apiConfig']['baseUrl']) || isset($data['baseUrl'])) {
-            $baseUrl = $data['apiConfig']['baseUrl'] ?? $data['baseUrl'];
-            $this->validateUrl('apiConfig.baseUrl', $baseUrl);
+        if (isset($data['baseUrl'])) {
+            $this->validateUrl('baseUrl', $data['baseUrl']);
         }
 
         // Method validation
-        if (isset($data['apiConfig']['method']) || isset($data['method'])) {
-            $method = $data['apiConfig']['method'] ?? $data['method'];
+        if (isset($data['method'])) {
             $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
-            $this->validateInArray('apiConfig.method', strtoupper($method), $allowedMethods);
+            $this->validateInArray('method', strtoupper($data['method']), $allowedMethods);
         }
 
         // Headers validation
-        if (isset($data['apiConfig']['headers']) || isset($data['headers'])) {
-            $headers = $data['apiConfig']['headers'] ?? $data['headers'];
-            $this->validateArray('apiConfig.headers', $headers, 0, 50);
+        if (isset($data['headers'])) {
+            $this->validateArray('headers', $data['headers'], 0, 50);
 
-            if (is_array($headers)) {
-                foreach ($headers as $key => $header) {
+            if (is_array($data['headers'])) {
+                foreach ($data['headers'] as $key => $header) {
                     if (is_array($header) && isset($header['name'])) {
                         $headerName = $this->sanitizeString($header['name']);
                         if (strlen($headerName) > 100) {
-                            $this->errors["apiConfig.headers.{$key}.name"] = "Header name too long";
+                            $this->errors["headers.{$key}.name"] = "Header name too long";
                         }
                     }
                 }
@@ -198,10 +196,9 @@ class ConnectionValidator extends BaseValidator
         }
 
         // Auth type validation
-        if (isset($data['apiConfig']['authType']) || isset($data['authType'])) {
-            $authType = $data['apiConfig']['authType'] ?? $data['authType'];
+        if (isset($data['authType'])) {
             $allowedAuthTypes = ['none', 'basic', 'bearer', 'api-key', 'oauth2'];
-            $this->validateInArray('apiConfig.authType', $authType, $allowedAuthTypes);
+            $this->validateInArray('authType', $data['authType'], $allowedAuthTypes);
         }
 
         // Schedule validation
