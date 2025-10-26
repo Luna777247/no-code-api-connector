@@ -60,7 +60,21 @@ class ScheduleManagementController
             http_response_code(400);
             return ['error' => 'Failed to update schedule'];
         }
-        return ['ok' => true];
+
+        // If activating a schedule, trigger Airflow sync
+        if (isset($input['isActive']) && $input['isActive'] === true) {
+            $dagId = "api_schedule_{$id}";
+            try {
+                // Trigger the sync DAG in Airflow so registration happens immediately
+                $this->airflowService->triggerDagRun('api_schedule_sync', ['scheduleId' => $id]);
+                $result['airflowSyncTriggered'] = true;
+            } catch (\Throwable $e) {
+                // Ignore errors - schedule activation should not fail because Airflow is unavailable
+                $result['airflowSyncTriggered'] = false;
+            }
+        }
+
+        return $result;
     }
 
     public function delete(string $id): array
