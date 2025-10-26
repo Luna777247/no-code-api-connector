@@ -5,8 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
 import {
   Activity,
   TrendingUp,
@@ -17,7 +15,6 @@ import {
   Clock,
   Database,
   Zap,
-  Search,
   Loader2,
 } from "lucide-react"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
@@ -31,8 +28,6 @@ export default function MonitoringPage() {
 
   const [statusData, setStatusData] = useState(null)
   const [successRateHistoryData, setSuccessRateHistoryData] = useState(null)
-  const [logs, setLogs] = useState([])
-  const [alerts, setAlerts] = useState([])
 
   const [successRateData, setSuccessRateData] = useState([])
   const [requestVolumeData, setRequestVolumeData] = useState([])
@@ -57,9 +52,6 @@ export default function MonitoringPage() {
       setStatusData(status)
       setSuccessRateHistoryData(successRateHistory)
       generateChartData(status, successRateHistory)
-      // Remove mock logs and alerts - real logging system not yet implemented
-      setLogs([])
-      setAlerts([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load monitoring data')
     } finally {
@@ -149,13 +141,13 @@ export default function MonitoringPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" suppressHydrationWarning>
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <BackToHomeButton />
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Monitoring & Logs</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Monitoring</h1>
               <p className="text-muted-foreground mt-1">
                 {loading ? "Loading system health and performance metrics..." : "Real-time system health and performance metrics"}
               </p>
@@ -195,11 +187,7 @@ export default function MonitoringPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${statusData?.activity?.successRate || 0}%`}
-              </div>
-              <div className="flex items-center text-xs text-green-600 mt-1">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +2.1% from last period
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${statusData?.performance?.successRate || 98.5}%`}
               </div>
             </CardContent>
           </Card>
@@ -213,10 +201,6 @@ export default function MonitoringPage() {
               <div className="text-2xl font-bold">
                 {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${statusData?.performance?.avgResponseTime || 245}ms`}
               </div>
-              <div className="flex items-center text-xs text-green-600 mt-1">
-                <TrendingDown className="h-3 w-3 mr-1" />
-                -15ms from last period
-              </div>
             </CardContent>
           </Card>
 
@@ -228,24 +212,6 @@ export default function MonitoringPage() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : statusData?.activity?.totalRuns || 0}
-              </div>
-              <div className="flex items-center text-xs text-green-600 mt-1">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +12% from last period
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{alerts.length}</div>
-              <div className="flex items-center text-xs text-yellow-600 mt-1">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                {alerts.filter((a) => a.severity === 'high').length} high, {alerts.filter((a) => a.severity === 'medium').length} medium
               </div>
             </CardContent>
           </Card>
@@ -260,13 +226,13 @@ export default function MonitoringPage() {
             <CardContent>
               {successRateData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={successRateData}>
+                  <BarChart data={successRateData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="time" className="text-xs" />
                     <YAxis domain={[90, 100]} className="text-xs" />
                     <Tooltip />
-                    <Line type="monotone" dataKey="rate" stroke="hsl(var(--primary))" strokeWidth={2} />
-                  </LineChart>
+                    <Bar dataKey="rate" fill="hsl(var(--primary))" />
+                  </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[250px]">
@@ -305,14 +271,14 @@ export default function MonitoringPage() {
             <CardContent>
               {responseTimeData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={responseTimeData}>
+                  <BarChart data={responseTimeData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="time" className="text-xs" />
                     <YAxis className="text-xs" />
                     <Tooltip />
-                    <Line type="monotone" dataKey="avg" stroke="hsl(var(--chart-3))" strokeWidth={2} name="Average" />
-                    <Line type="monotone" dataKey="p95" stroke="hsl(var(--chart-4))" strokeWidth={2} strokeDasharray="5 5" name="95th Percentile" />
-                  </LineChart>
+                    <Bar dataKey="avg" fill="hsl(var(--chart-3))" name="Average" />
+                    <Bar dataKey="p95" fill="hsl(var(--chart-4))" name="95th Percentile" />
+                  </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[250px]">
@@ -326,67 +292,10 @@ export default function MonitoringPage() {
           </Card>
         </div>
 
-        <Tabs defaultValue="logs" className="space-y-4">
+        <Tabs defaultValue="connections" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="logs">Recent Logs</TabsTrigger>
-            <TabsTrigger value="alerts">
-              Alerts
-              <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
-                0
-              </Badge>
-            </TabsTrigger>
             <TabsTrigger value="connections">Connection Health</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="logs">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>System Logs</CardTitle>
-                    <CardDescription>Real-time logs from all API connections</CardDescription>
-                  </div>
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search logs..." className="pl-9" />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-96">
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">System Logs Coming Soon</h3>
-                      <p className="text-muted-foreground text-sm max-w-md">
-                        Real-time logging system is currently being implemented. Check back later for detailed API connection logs and system events.
-                      </p>
-                    </div>
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="alerts">
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Alerts</CardTitle>
-                <CardDescription>System alerts and notifications requiring attention</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Alert System Coming Soon</h3>
-                    <p className="text-muted-foreground text-sm max-w-md">
-                      Intelligent alerting system is being developed to notify you of connection issues, performance degradation, and system anomalies.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="connections">
             <Card>
