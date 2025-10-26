@@ -83,24 +83,31 @@ docker compose up -d
 - Username: `airflow`
 - Password: `airflow`
 
-### 4.4. Lấy JWT Token cho API
+### 4.4. Lấy JWT Token cho API (tự động khi khởi động dev)
+
+Airflow API sử dụng token JWT có thời hạn. Để thuận tiện, `start-dev.ps1` sẽ tự động lấy token một lần khi khởi động và khởi một background job để refresh token định kỳ (mặc định ~55 phút).
+
+Bạn cần cung cấp thông tin đăng nhập Airflow (mặc định user/password = `airflow`/`airflow`) trong file `.env` để script lấy token:
+
+```ini
+# trong backendphp/.env
+AIRFLOW_HOST=http://localhost:8080
+AIRFLOW_USERNAME=airflow
+AIRFLOW_PASSWORD=airflow
+```
+
+Khi `start-dev.ps1` chạy, nó sẽ gọi endpoint `POST http://<AIRFLOW_HOST>/auth/token` để lấy token và ghi vào `backendphp/access_token.json` và cập nhật `AIRFLOW_ACCESS_TOKEN` trong `backendphp/.env`.
+
+Nếu bạn cần lấy token thủ công (ví dụ để debug), bạn vẫn có thể gọi:
 
 ```powershell
-$ENDPOINT_URL = "http://localhost:8080"
-$body = @{
-    username = "airflow"
-    password = "airflow"
-} | ConvertTo-Json
-
-$response = Invoke-WebRequest -Method POST -Uri "$ENDPOINT_URL/auth/token" -Headers @{ "Content-Type" = "application/json" } -Body $body
-
-# Lưu access_token vào .env
-$tokenData = $response.Content | ConvertFrom-Json
-$tokenData.access_token | Out-File -FilePath "access_token.json" -Encoding UTF8
-
-# Copy token vào .env
-notepad .env  # Thêm AIRFLOW_ACCESS_TOKEN=<token>
+$body = @{ username = 'airflow'; password = 'airflow' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/auth/token" -ContentType 'application/json' -Body $body | ConvertTo-Json
 ```
+
+Ghi chú:
+- Token có TTL; script sẽ refresh tự động khi `start-dev.ps1` đang chạy. Nếu bạn chỉ khởi backend bằng `php -S` mà không chạy `start-dev.ps1`, hãy chạy script `backendphp\scripts\refresh_airflow_token.ps1` thủ công hoặc thêm token vào `.env`.
+- Trong môi trường production, hãy sử dụng secrets/secure storage (không lưu token trần trong .env).
 
 ### 4.5. Cấu hình CORS (tùy chọn)
 
