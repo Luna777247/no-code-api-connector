@@ -7,13 +7,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Plus, Trash2, Eye, EyeOff, Play } from 'lucide-react'
+import { Plus, Trash2, Eye, EyeOff } from 'lucide-react'
 import apiClient from '../../services/apiClient.js'
 
 export function ApiConfigStep({ data, onChange }) {
   const [showAuthValue, setShowAuthValue] = useState(false)
-  const [isTesting, setIsTesting] = useState(false)
-  const [testResult, setTestResult] = useState(null)
 
   const updateField = (field, value) => {
     onChange({ ...data, [field]: value })
@@ -37,44 +35,6 @@ export function ApiConfigStep({ data, onChange }) {
       ...data,
       headers: data.headers.filter((_, i) => i !== index),
     })
-  }
-
-  const handleTestConnection = async () => {
-    if (!data.baseUrl.trim()) {
-      setTestResult({ success: false, message: 'Base URL is required' })
-      return
-    }
-
-    setIsTesting(true)
-    setTestResult(null)
-
-    try {
-      const testData = {
-        apiConfig: {
-          baseUrl: data.baseUrl,
-          method: data.method,
-          headers: data.headers.filter(h => h.key && h.value)
-        }
-      }
-
-      const response = await apiClient.post('/api/test-connection', testData)
-      setTestResult({
-        success: response.data.success,
-        status: response.data.status,
-        message: response.data.message
-      })
-    } catch (error) {
-      console.error('Test connection error:', error)
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message || 
-                          'Request failed with status code 400'
-      setTestResult({
-        success: false,
-        message: errorMessage
-      })
-    } finally {
-      setIsTesting(false)
-    }
   }
 
   return (
@@ -289,40 +249,6 @@ export function ApiConfigStep({ data, onChange }) {
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Test Connection */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Test Connection</h3>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleTestConnection}
-            disabled={isTesting || !data.baseUrl.trim()}
-            className="gap-2"
-          >
-            <Play className="h-3 w-3" />
-            {isTesting ? 'Testing...' : 'Test Connection'}
-          </Button>
-        </div>
-
-        {testResult && (
-          <Card className={`p-4 ${testResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${testResult.success ? 'bg-green-500' : 'bg-red-500'}`} />
-              <p className={`text-sm font-medium ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
-                {testResult.message}
-              </p>
-              {testResult.status && (
-                <span className="text-xs text-muted-foreground">
-                  (Status: {testResult.status})
-                </span>
-              )}
-            </div>
-          </Card>
         )}
       </div>
     </div>
