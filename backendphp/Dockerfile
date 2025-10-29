@@ -33,8 +33,9 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 # Copy application code
 COPY . .
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
+# Create necessary directories and set permissions
+RUN mkdir -p /var/www/html/logs /var/www/html/dags \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html \
     && chmod -R 775 /var/www/html/logs \
     && chmod -R 775 /var/www/html/dags
