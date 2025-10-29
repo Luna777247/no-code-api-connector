@@ -100,6 +100,9 @@ prod-up: ## Start production environment
 # Quick setup for new developers
 setup: ## Initial setup for new developers
 	@echo "Setting up No-Code API Connector..."
+	@echo "Starting Docker Desktop..."
+	@powershell -ExecutionPolicy Bypass -File start-docker.ps1
+	@echo "Building Docker images..."
 	make build
 	make up-dev
 	@echo "Waiting for services to be ready..."
@@ -108,6 +111,9 @@ setup: ## Initial setup for new developers
 	@echo "  Frontend: http://localhost:3000"
 	@echo "  Backend:  http://localhost:8000"
 	@echo "  MongoDB:  localhost:27017 (admin/password123)"
+
+docker-start: ## Start Docker Desktop and wait for it to be ready
+	powershell -ExecutionPolicy Bypass -File start-docker.ps1
 
 # Status check
 status: ## Show status of all services
