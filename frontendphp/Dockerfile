@@ -1,23 +1,29 @@
 # Build stage
 FROM node:22-alpine AS builder
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Set working directory
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package*.json pnpm-lock.yaml ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies using pnpm
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN pnpm run build
 
 # Production stage
 FROM node:22-alpine AS runner
+
+# Install pnpm
+RUN npm install -g pnpm
 
 # Set working directory
 WORKDIR /app
@@ -31,6 +37,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
 # Create .env.local for production
 RUN echo "NEXT_PUBLIC_API_BASE_URL=http://backend:80" > .env.local
@@ -42,4 +49,4 @@ USER nextjs
 EXPOSE 3001
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
