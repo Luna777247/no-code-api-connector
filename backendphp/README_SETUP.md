@@ -23,7 +23,7 @@ cd D:\project\no-code-api-connector\backendphp
 
 ---
 
-## 2. Cài đặt phụ thuộc PHP
+## 2. Cài đặt phụ thuộc PHP (Bỏ qua)
 
 ```powershell
 composer install
@@ -33,7 +33,7 @@ composer install
 
 ---
 
-## 3. Cấu hình môi trường
+## 3. Cấu hình môi trường (Bỏ qua)
 
 - Tạo file `.env` từ mẫu:
 
@@ -54,13 +54,13 @@ notepad .env
 
 Backend này sử dụng Airflow để quản lý workflow. Làm theo các bước sau:
 
-### 4.1. Tải Docker Compose config cho Airflow
+### 4.1. Tải Docker Compose config cho Airflow (Bỏ qua)
 
 ```powershell
 Invoke-WebRequest -Uri 'https://airflow.apache.org/docs/apache-airflow/3.1.0/docker-compose.yaml' -OutFile 'docker-compose.yaml'
 ```
 
-### 4.2. Tạo cấu trúc thư mục Airflow
+### 4.2. Tạo cấu trúc thư mục Airflow (Bỏ qua)
 
 ```powershell
 New-Item -ItemType Directory -Path ./dags -Force
@@ -83,7 +83,7 @@ docker compose up -d
 - Username: `airflow`
 - Password: `airflow`
 
-### 4.4. Lấy JWT Token cho API (tự động khi khởi động dev)
+### 4.4. Lấy JWT Token cho API (tự động khi khởi động dev) (Bỏ qua)
 
 Airflow API sử dụng token JWT có thời hạn. Để thuận tiện, `start-dev.ps1` sẽ tự động lấy token một lần khi khởi động và khởi một background job để refresh token định kỳ (mặc định ~55 phút).
 
@@ -109,7 +109,7 @@ Ghi chú:
 - Token có TTL; script sẽ refresh tự động khi `start-dev.ps1` đang chạy. Nếu bạn chỉ khởi backend bằng `php -S` mà không chạy `start-dev.ps1`, hãy chạy script `backendphp\scripts\refresh_airflow_token.ps1` thủ công hoặc thêm token vào `.env`.
 - Trong môi trường production, hãy sử dụng secrets/secure storage (không lưu token trần trong .env).
 
-### 4.5. Cấu hình CORS (tùy chọn)
+### 4.5. Cấu hình CORS (tùy chọn) (Bỏ qua)
 
 Mở `airflow.cfg` và thêm:
 
@@ -173,7 +173,7 @@ php vendor/bin/phpunit
 
 ---
 
-## 9. Scripts tiện ích
+## 9. Scripts tiện ích  (Bỏ qua)
 
 ### Script khởi động nhanh
 
