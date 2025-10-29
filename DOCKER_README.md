@@ -27,7 +27,27 @@ git clone https://github.com/Luna777247/no-code-api-connector.git
 cd no-code-api-connector
 ```
 
-### 2. Chạy với Docker Compose
+### 2. Khởi động Docker Desktop
+
+**Quan trọng**: Trước khi chạy docker-compose, bạn phải khởi động Docker Desktop.
+
+#### Tự động (khuyến nghị):
+```bash
+# Chạy script tự động khởi động Docker
+.\start-docker.ps1
+```
+
+#### Thủ công:
+1. Mở Docker Desktop từ Start Menu hoặc Desktop shortcut
+2. Chờ cho Docker Desktop khởi động hoàn toàn (thấy icon whale xanh)
+3. Có thể mất 1-2 phút cho lần đầu tiên
+
+#### Kiểm tra Docker đã sẵn sàng:
+```bash
+docker info
+```
+
+### 3. Chạy với Docker Compose
 
 ```bash
 # Chạy tất cả services (bao gồm Airflow)
