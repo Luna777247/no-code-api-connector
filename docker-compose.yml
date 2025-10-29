@@ -1,0 +1,146 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7-jammy
+    container_name: no-code-api-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: dataplatform_db
+    volumes:
+      - mongodb_data:/data/db
+      - ./backendphp/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - app-network
+
+  # PHP Backend
+  backend:
+    build:
+      context: ./backendphp
+      dockerfile: Dockerfile
+    container_name: no-code-api-backend
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/dataplatform_db?authSource=admin
+      MONGODB_DATABASE: dataplatform_db
+      API_CONNECTIONS_COLLECTION: api_connections
+      API_RUNS_COLLECTION: api_runs
+      API_SCHEDULES_COLLECTION: api_schedules
+      PARAMETER_MODES_COLLECTION: parameter_modes
+      APP_ENV: production
+      APP_DEBUG: false
+    depends_on:
+      - mongodb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backendphp/logs:/var/www/html/logs
+      - ./backendphp/dags:/var/www/html/dags
+    networks:
+      - app-network
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontendphp
+      dockerfile: Dockerfile
+    container_name: no-code-api-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://backend:80
+      NODE_ENV: production
+    depends_on:
+      - backend
+    ports:
+      - "3000:3001"
+    networks:
+      - app-network
+
+  # Redis (optional, for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: no-code-api-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # Airflow Webserver (optional)
+  airflow-webserver:
+    image: apache/airflow:2.9.0
+    container_name: no-code-api-airflow-webserver
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here'
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__WEBSERVER__WEB_SERVER_HOST: 0.0.0.0
+      AIRFLOW__WEBSERVER__WEB_SERVER_PORT: 8080
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backendphp/dags:/opt/airflow/dags
+      - ./backendphp/logs:/opt/airflow/logs
+      - ./backendphp/plugins:/opt/airflow/plugins
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+    command: webserver
+
+  # Airflow Scheduler (optional)
+  airflow-scheduler:
+    image: apache/airflow:2.9.0
+    container_name: no-code-api-airflow-scheduler
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here'
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backendphp/dags:/opt/airflow/dags
+      - ./backendphp/logs:/opt/airflow/logs
+      - ./backendphp/plugins:/opt/airflow/plugins
+    networks:
+      - app-network
+    command: scheduler
+
+  # PostgreSQL for Airflow (optional)
+  postgres:
+    image: postgres:15-alpine
+    container_name: no-code-api-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+volumes:
+  mongodb_data:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
