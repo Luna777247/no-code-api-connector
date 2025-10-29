@@ -24,7 +24,7 @@ services:
     container_name: no-code-api-backend
     restart: unless-stopped
     environment:
-      MONGODB_URI: mongodb://admin:password123@mongodb:27017/dataplatform_db?authSource=admin
+      MONGODB_URI: mongodb+srv://nguyenanhilu9785_db_user:12345@cluster0.olqzq.mongodb.net/dataplatform_db
       MONGODB_DATABASE: dataplatform_db
       API_CONNECTIONS_COLLECTION: api_connections
       API_RUNS_COLLECTION: api_runs
@@ -32,8 +32,6 @@ services:
       PARAMETER_MODES_COLLECTION: parameter_modes
       APP_ENV: production
       APP_DEBUG: false
-    depends_on:
-      - mongodb
     ports:
       - "8000:80"
     volumes:

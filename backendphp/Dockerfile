@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nodejs \
     npm \
+    netcat-openbsd \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Install MongoDB extension
