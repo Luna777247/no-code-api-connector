@@ -11,11 +11,11 @@ Hướng dẫn chạy toàn bộ hệ thống bằng Docker để phát triển 
 
 ## Cấu trúc services
 
-- **MongoDB Atlas**: Cơ sở dữ liệu đám mây (không cần chạy local MongoDB)
-- **Backend (PHP)**: API backend (Port 8000)
+- **MongoDB Atlas**: Cơ sở dữ liệu đám mây (SRV connection) - **KHÔNG** chạy local MongoDB container
+- **Backend (PHP)**: API backend (Port 8000) - kết nối đến MongoDB Atlas
 - **Frontend (Next.js)**: Giao diện người dùng (Port 3000)
 - **Redis**: Cache (optional, Port 6379)
-- **Airflow**: Workflow orchestration (optional, Port 8080)
+- **Airflow**: Workflow orchestration (optional, Port 8080) - cần khởi tạo database
 - **PostgreSQL**: Database cho Airflow (optional)
 
 ## Chạy toàn bộ hệ thống
@@ -31,10 +31,12 @@ cd no-code-api-connector
 
 **Quan trọng**: Trước khi chạy docker-compose, bạn phải khởi động Docker Desktop.
 
-#### Tự động (khuyến nghị):
+### Tự động (khuyến nghị):
 ```bash
-# Chạy script tự động khởi động Docker
-.\start-docker.ps1
+# Chạy script setup tự động (Windows)
+.\setup.ps1
+
+# Hoặc chạy từng bước thủ công
 ```
 
 #### Thủ công:
@@ -50,22 +52,33 @@ docker info
 ### 3. Chạy với Docker Compose
 
 ```bash
-# Chạy tất cả services (bao gồm Airflow)
+# Chạy tất cả services (backend, frontend, Redis, Airflow, PostgreSQL)
+# KHÔNG bao gồm MongoDB local vì chúng ta dùng MongoDB Atlas
 docker-compose up -d
 
-# Hoặc chỉ chạy core services (không có Airflow, không có MongoDB local)
+# Hoặc chỉ chạy core services (backend + frontend)
 docker-compose up -d backend frontend
 ```
 
-### 3. Kiểm tra trạng thái
+### 3. Khởi tạo Airflow Database (bắt buộc cho lần đầu)
+
+Sau khi containers đã chạy, bạn cần khởi tạo Airflow database:
 
 ```bash
-# Xem logs
-docker-compose logs -f
+# Khởi tạo database
+docker-compose exec airflow-webserver airflow db migrate
 
-# Kiểm tra services đang chạy
-docker-compose ps
+# Tạo admin user (thay đổi username/password nếu muốn)
+docker-compose exec airflow-webserver airflow users create \
+  --username airflow \
+  --password airflow \
+  --firstname Airflow \
+  --lastname Admin \
+  --role Admin \
+  --email admin@example.com
 ```
+
+### 4. Kiểm tra trạng thái
 
 ## Truy cập ứng dụng
 
@@ -75,15 +88,30 @@ docker-compose ps
 - **Airflow UI**: http://localhost:8080 (airflow/airflow)
 - **Redis**: localhost:6379
 
-## Database seeding
+## Quick Start
 
-Hệ thống sử dụng MongoDB Atlas làm cơ sở dữ liệu đám mây. Dữ liệu mẫu sẽ được tạo tự động khi backend khởi động lần đầu:
+### 1. Chuẩn bị
+- Đảm bảo Docker Desktop đang chạy
+- Kiểm tra MongoDB Atlas connection string trong `docker-compose.yml`
 
-- 1 connection mẫu (JSONPlaceholder API)
-- Collections: api_connections, api_runs, api_schedules, parameter_modes
-- Indexes cần thiết cho performance
+### 2. Chạy hệ thống
+```bash
+# Clone và vào thư mục
+git clone https://github.com/Luna777247/no-code-api-connector.git
+cd no-code-api-connector
 
-**Lưu ý**: Đảm bảo biến môi trường `MONGODB_URI` trong docker-compose.yml đã được cấu hình đúng với MongoDB Atlas cluster của bạn.
+# Chạy tất cả services
+docker-compose up -d
+
+# Khởi tạo Airflow database (chỉ cần lần đầu)
+docker-compose exec airflow-webserver airflow db migrate
+docker-compose exec airflow-webserver airflow users create --username airflow --password airflow --firstname Airflow --lastname Admin --role Admin --email admin@example.com
+```
+
+### 3. Truy cập
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000/api/data
+- **Airflow UI**: http://localhost:8080 (airflow/airflow)
 
 ## Development workflow
 
@@ -148,12 +176,26 @@ docker-compose logs backend
 docker-compose restart backend
 ```
 
-### Frontend build fails
+### Airflow webserver không khởi động được
 
 ```bash
-# Rebuild frontend với no-cache
-docker-compose build --no-cache frontend
-docker-compose up -d frontend
+# Kiểm tra logs
+docker-compose logs airflow-webserver
+
+# Khởi tạo database nếu chưa có
+docker-compose exec airflow-webserver airflow db migrate
+
+# Tạo admin user
+docker-compose exec airflow-webserver airflow users create \
+  --username airflow \
+  --password airflow \
+  --firstname Airflow \
+  --lastname Admin \
+  --role Admin \
+  --email admin@example.com
+
+# Restart Airflow services
+docker-compose restart airflow-webserver airflow-scheduler
 ```
 
 ### Port conflicts
@@ -176,7 +218,7 @@ Tạo file `.env` trong thư mục gốc:
 MONGODB_URI=mongodb+srv://your-username:your-password@your-cluster.mongodb.net/dataplatform_db
 
 # Airflow
-AIRFLOW_FERNET_KEY=your_fernet_key_here
+AIRFLOW_FERNET_KEY=Ct6eDwd0qU3kApoLB-vbcSp6_yybH-6TCI9bMfpW3Rs=
 
 # Custom ports (optional)
 BACKEND_PORT=8000

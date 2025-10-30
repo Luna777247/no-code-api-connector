@@ -11,7 +11,7 @@ from datetime import datetime
 
 BASE_URL = "http://localhost:8000"
 
-def make_request(method, endpoint, data=None, params=None):
+def make_request(method, endpoint, data=None, params=None, silent_fail=False):
     """Make HTTP request to API endpoint"""
     url = f"{BASE_URL}{endpoint}"
     headers = {'Content-Type': 'application/json'}
@@ -38,12 +38,14 @@ def make_request(method, endpoint, data=None, params=None):
             except:
                 return response.text
         else:
-            print("❌ Failed")
-            print(f"Response: {response.text}")
+            if not silent_fail:
+                print("❌ Failed")
+                print(f"Response: {response.text}")
             return None
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Request failed: {e}")
+        if not silent_fail:
+            print(f"❌ Request failed: {e}")
         return None
 
 def test_get_connections():
@@ -195,9 +197,9 @@ def test_delete_connection(connection_id):
     result = make_request('DELETE', f'/api/connections/{connection_id}')
     if result:
         print("✅ Connection deleted successfully")
-        # Verify deletion by trying to get the connection
-        verify = make_request('GET', f'/api/connections/{connection_id}')
-        if verify is None or verify.get('error') == 'Not Found':
+        # Verify deletion by trying to get the connection (silent fail for expected 404)
+        verify = make_request('GET', f'/api/connections/{connection_id}', silent_fail=True)
+        if verify is None or verify.get('error') == 'Connection not found':
             print("✅ Deletion verified - connection no longer exists")
         else:
             print("⚠️ Deletion may not have been completed correctly")

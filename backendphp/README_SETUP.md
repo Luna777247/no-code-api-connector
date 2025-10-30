@@ -69,6 +69,9 @@ New-Item -ItemType Directory -Path ./plugins -Force
 New-Item -ItemType Directory -Path ./config -Force
 ```
 
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+docker-compose exec airflow-webserver airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
+
 ### 4.3. Khởi tạo Airflow
 
 ```powershell

@@ -66,12 +66,16 @@ EXPOSE 80
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
-# Wait for MongoDB\n\
-echo "Waiting for MongoDB..."\n\
-while ! nc -z mongodb 27017; do\n\
-  sleep 1\n\
-done\n\
-echo "MongoDB is up!"\n\
+# Wait for MongoDB (only if using local MongoDB)\n\
+if [ "$MONGODB_URI" != "" ] && [[ "$MONGODB_URI" == mongodb://* ]]; then\n\
+  echo "Waiting for local MongoDB..."\n\
+  while ! nc -z mongodb 27017; do\n\
+    sleep 1\n\
+  done\n\
+  echo "Local MongoDB is up!"\n\
+else\n\
+  echo "Using MongoDB Atlas or external MongoDB, skipping local wait..."\n\
+fi\n\
 \n\
 # Start Apache\n\
 apache2-foreground' > /usr/local/bin/start.sh \

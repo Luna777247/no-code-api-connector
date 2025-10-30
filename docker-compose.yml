@@ -77,7 +77,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here'
+      AIRFLOW__CORE__FERNET_KEY: 'Ct6eDwd0qU3kApoLB-vbcSp6_yybH-6TCI9bMfpW3Rs='
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
       AIRFLOW__WEBSERVER__WEB_SERVER_HOST: 0.0.0.0
@@ -105,7 +105,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: 'your-fernet-key-here'
+      AIRFLOW__CORE__FERNET_KEY: 'Ct6eDwd0qU3kApoLB-vbcSp6_yybH-6TCI9bMfpW3Rs='
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
     depends_on:
