@@ -11,7 +11,7 @@ Hướng dẫn chạy toàn bộ hệ thống bằng Docker để phát triển 
 
 ## Cấu trúc services
 
-- **MongoDB**: Cơ sở dữ liệu chính (Port 27017)
+- **MongoDB Atlas**: Cơ sở dữ liệu đám mây (không cần chạy local MongoDB)
 - **Backend (PHP)**: API backend (Port 8000)
 - **Frontend (Next.js)**: Giao diện người dùng (Port 3000)
 - **Redis**: Cache (optional, Port 6379)
@@ -53,8 +53,8 @@ docker info
 # Chạy tất cả services (bao gồm Airflow)
 docker-compose up -d
 
-# Hoặc chỉ chạy core services (không có Airflow)
-docker-compose up -d mongodb backend frontend
+# Hoặc chỉ chạy core services (không có Airflow, không có MongoDB local)
+docker-compose up -d backend frontend
 ```
 
 ### 3. Kiểm tra trạng thái
@@ -71,17 +71,19 @@ docker-compose ps
 
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
-- **MongoDB**: localhost:27017 (admin/password123)
+- **MongoDB Atlas**: Quản lý qua MongoDB Atlas Dashboard (không cần truy cập local)
 - **Airflow UI**: http://localhost:8080 (airflow/airflow)
 - **Redis**: localhost:6379
 
 ## Database seeding
 
-Sau khi MongoDB khởi động, database sẽ tự động được tạo với dữ liệu mẫu bao gồm:
+Hệ thống sử dụng MongoDB Atlas làm cơ sở dữ liệu đám mây. Dữ liệu mẫu sẽ được tạo tự động khi backend khởi động lần đầu:
 
 - 1 connection mẫu (JSONPlaceholder API)
 - Collections: api_connections, api_runs, api_schedules, parameter_modes
 - Indexes cần thiết cho performance
+
+**Lưu ý**: Đảm bảo biến môi trường `MONGODB_URI` trong docker-compose.yml đã được cấu hình đúng với MongoDB Atlas cluster của bạn.
 
 ## Development workflow
 
@@ -126,11 +128,14 @@ docker-compose down --rmi all
 ### MongoDB connection issues
 
 ```bash
-# Kiểm tra MongoDB container
-docker-compose exec mongodb mongo --eval "db.stats()"
+# Kiểm tra backend logs để xem lỗi kết nối MongoDB Atlas
+docker-compose logs backend
 
-# Restart MongoDB
-docker-compose restart mongodb
+# Restart backend
+docker-compose restart backend
+
+# Kiểm tra biến môi trường MONGODB_URI trong docker-compose.yml
+# Đảm bảo connection string MongoDB Atlas đúng và có quyền truy cập
 ```
 
 ### Backend không kết nối được
@@ -167,9 +172,8 @@ Nếu các port 3000, 8000, 27017 đã được sử dụng:
 Tạo file `.env` trong thư mục gốc:
 
 ```env
-# MongoDB
-MONGO_ROOT_USERNAME=your_admin_user
-MONGO_ROOT_PASSWORD=your_secure_password
+# MongoDB Atlas
+MONGODB_URI=mongodb+srv://your-username:your-password@your-cluster.mongodb.net/dataplatform_db
 
 # Airflow
 AIRFLOW_FERNET_KEY=your_fernet_key_here
@@ -185,24 +189,24 @@ FRONTEND_PORT=3000
 
 ## Backup và Restore
 
-### Backup MongoDB
+### Backup MongoDB Atlas
+
+Sử dụng MongoDB Atlas Dashboard hoặc mongodump:
 
 ```bash
-# Backup
-docker-compose exec mongodb mongodump --db dataplatform_db --out /backup
+# Backup từ Atlas cluster
+mongodump --uri="mongodb+srv://username:password@cluster.mongodb.net/dataplatform_db" --out=./atlas_backup
 
-# Copy ra host
-docker cp $(docker-compose ps -q mongodb):/backup ./mongodb_backup
+# Hoặc sử dụng MongoDB Compass để export data
 ```
 
-### Restore MongoDB
+### Restore MongoDB Atlas
 
 ```bash
-# Copy backup vào container
-docker cp ./mongodb_backup $(docker-compose ps -q mongodb):/backup
+# Restore vào Atlas cluster
+mongorestore --uri="mongodb+srv://username:password@cluster.mongodb.net/dataplatform_db" ./atlas_backup/dataplatform_db
 
-# Restore
-docker-compose exec mongodb mongorestore --db dataplatform_db /backup/dataplatform_db
+# Hoặc sử dụng MongoDB Compass để import data
 ```
 
 ## Performance tuning
@@ -210,15 +214,23 @@ docker-compose exec mongodb mongorestore --db dataplatform_db /backup/dataplatfo
 ### Memory limits
 
 ```yaml
-# Trong docker-compose.yml, thêm memory limits
+# Trong docker-compose.yml, thêm memory limits cho các services
 services:
-  mongodb:
+  backend:
     deploy:
       resources:
         limits:
           memory: 1G
         reservations:
           memory: 512M
+  
+  frontend:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 ```
 
 ### Scaling
