@@ -32,8 +32,8 @@ cd no-code-api-connector
 **Quan trọng**: Trước khi chạy docker-compose, bạn phải khởi động Docker Desktop.
 
 ### Tự động (khuyến nghị):
-```bash
-# Chạy script setup tự động (Windows)
+```powershell
+# Chạy script setup tự động (Windows PowerShell)
 .\setup.ps1
 
 # Hoặc chạy từng bước thủ công
@@ -95,17 +95,13 @@ docker-compose exec airflow-webserver airflow users create \
 - Kiểm tra MongoDB Atlas connection string trong `docker-compose.yml`
 
 ### 2. Chạy hệ thống
-```bash
+```powershell
 # Clone và vào thư mục
 git clone https://github.com/Luna777247/no-code-api-connector.git
 cd no-code-api-connector
 
-# Chạy tất cả services
-docker-compose up -d
-
-# Khởi tạo Airflow database (chỉ cần lần đầu)
-docker-compose exec airflow-webserver airflow db migrate
-docker-compose exec airflow-webserver airflow users create --username airflow --password airflow --firstname Airflow --lastname Admin --role Admin --email admin@example.com
+# Chạy script setup tự động
+.\setup.ps1
 ```
 
 ### 3. Truy cập
