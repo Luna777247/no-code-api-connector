@@ -22,7 +22,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
       </head>
-      <body className={`font-sans antialiased`} suppressHydrationWarning>
+      <body className={`font-sans antialiased`}>
         <div>
           {children}
         </div>
