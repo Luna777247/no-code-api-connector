@@ -964,3 +964,45 @@ Traceback (most recent call last):
 ModuleNotFoundError: No module named 'airflow.providers.standard'
 [2025-10-30T13:08:19.872+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_schedule_sync_dag.py
 [2025-10-30T13:08:19.892+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_schedule_sync_dag.py took 0.041 seconds
+[2025-10-30T13:08:50.328+0000] {processor.py:161} INFO - Started process (PID=194) to work on /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:08:50.329+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/api_schedule_sync_dag.py for tasks to queue
+[2025-10-30T13:08:50.331+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:08:50.330+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:08:50.341+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:08:50.339+0000] {dagbag.py:350} ERROR - Failed to import: /opt/airflow/dags/api_schedule_sync_dag.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 346, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/api_schedule_sync_dag.py", line 2, in <module>
+    from airflow.providers.standard.operators.python import PythonOperator
+ModuleNotFoundError: No module named 'airflow.providers.standard'
+[2025-10-30T13:08:50.342+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:08:50.363+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_schedule_sync_dag.py took 0.039 seconds
+[2025-10-30T13:09:20.767+0000] {processor.py:161} INFO - Started process (PID=197) to work on /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:09:20.768+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/api_schedule_sync_dag.py for tasks to queue
+[2025-10-30T13:09:20.770+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:20.769+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:09:20.780+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:20.777+0000] {dagbag.py:350} ERROR - Failed to import: /opt/airflow/dags/api_schedule_sync_dag.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 346, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/api_schedule_sync_dag.py", line 2, in <module>
+    from airflow.providers.standard.operators.python import PythonOperator
+ModuleNotFoundError: No module named 'airflow.providers.standard'
+[2025-10-30T13:09:20.781+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:09:20.802+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_schedule_sync_dag.py took 0.039 seconds
+[2025-10-30T13:09:51.225+0000] {processor.py:161} INFO - Started process (PID=200) to work on /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:09:51.226+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/api_schedule_sync_dag.py for tasks to queue
+[2025-10-30T13:09:51.228+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:51.228+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:09:51.238+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:51.235+0000] {dagbag.py:350} ERROR - Failed to import: /opt/airflow/dags/api_schedule_sync_dag.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 346, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/api_schedule_sync_dag.py", line 2, in <module>
+    from airflow.providers.standard.operators.python import PythonOperator
+ModuleNotFoundError: No module named 'airflow.providers.standard'
+[2025-10-30T13:09:51.239+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_schedule_sync_dag.py
+[2025-10-30T13:09:51.261+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_schedule_sync_dag.py took 0.040 seconds

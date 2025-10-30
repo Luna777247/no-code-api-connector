@@ -964,3 +964,45 @@ Traceback (most recent call last):
 ModuleNotFoundError: No module named 'pymongo'
 [2025-10-30T13:08:19.940+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_execution_dag.py
 [2025-10-30T13:08:19.962+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_execution_dag.py took 0.046 seconds
+[2025-10-30T13:08:50.419+0000] {processor.py:161} INFO - Started process (PID=195) to work on /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:08:50.420+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/api_execution_dag.py for tasks to queue
+[2025-10-30T13:08:50.422+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:08:50.422+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:08:50.441+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:08:50.437+0000] {dagbag.py:350} ERROR - Failed to import: /opt/airflow/dags/api_execution_dag.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 346, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/api_execution_dag.py", line 8, in <module>
+    from pymongo import MongoClient
+ModuleNotFoundError: No module named 'pymongo'
+[2025-10-30T13:08:50.443+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:08:50.469+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_execution_dag.py took 0.057 seconds
+[2025-10-30T13:09:20.864+0000] {processor.py:161} INFO - Started process (PID=198) to work on /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:09:20.865+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/api_execution_dag.py for tasks to queue
+[2025-10-30T13:09:20.866+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:20.866+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:09:20.882+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:20.879+0000] {dagbag.py:350} ERROR - Failed to import: /opt/airflow/dags/api_execution_dag.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 346, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/api_execution_dag.py", line 8, in <module>
+    from pymongo import MongoClient
+ModuleNotFoundError: No module named 'pymongo'
+[2025-10-30T13:09:20.884+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:09:20.907+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_execution_dag.py took 0.048 seconds
+[2025-10-30T13:09:51.333+0000] {processor.py:161} INFO - Started process (PID=201) to work on /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:09:51.334+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/api_execution_dag.py for tasks to queue
+[2025-10-30T13:09:51.336+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:51.335+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:09:51.349+0000] {logging_mixin.py:188} INFO - [2025-10-30T13:09:51.346+0000] {dagbag.py:350} ERROR - Failed to import: /opt/airflow/dags/api_execution_dag.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 346, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/api_execution_dag.py", line 8, in <module>
+    from pymongo import MongoClient
+ModuleNotFoundError: No module named 'pymongo'
+[2025-10-30T13:09:51.350+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/api_execution_dag.py
+[2025-10-30T13:09:51.372+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/api_execution_dag.py took 0.044 seconds
