@@ -315,4 +315,74 @@ class DataRepository extends BaseRepository
         // This method is required by BaseRepository but not used in this implementation
         return $this->normalizeDocument($document, '');
     }
+
+    /**
+     * Insert data into a specific collection
+     */
+    public function insertIntoCollection(string $collectionName, array $data): bool
+    {
+        try {
+            $manager = $this->getManager();
+            $db = $this->getDatabaseName();
+
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->insert($data);
+
+            $result = $manager->executeBulkWrite($db . '.' . $collectionName, $bulk);
+            return $result->getInsertedCount() > 0;
+        } catch (\Throwable $e) {
+            error_log('Insert into collection failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Update data in a specific collection
+     */
+    public function updateInCollection(string $collectionName, string $id, array $data): bool
+    {
+        try {
+            $manager = $this->getManager();
+            $db = $this->getDatabaseName();
+
+            $objectId = new \MongoDB\BSON\ObjectId($id);
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->update(
+                ['_id' => $objectId],
+                ['$set' => $data],
+                ['upsert' => true]
+            );
+
+            $result = $manager->executeBulkWrite($db . '.' . $collectionName, $bulk);
+            return ($result->getModifiedCount() + $result->getUpsertedCount()) > 0;
+        } catch (\Throwable $e) {
+            error_log('Update in collection failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Find existing record for upsert logic
+     */
+    public function findExistingRecord(string $collectionName, array $filter): ?array
+    {
+        try {
+            $manager = $this->getManager();
+            $db = $this->getDatabaseName();
+
+            $query = new \MongoDB\Driver\Query($filter, ['limit' => 1]);
+            $cursor = $manager->executeQuery($db . '.' . $collectionName, $query);
+            $documents = $cursor->toArray();
+
+            if (empty($documents)) {
+                return null;
+            }
+
+            $doc = $documents[0];
+            return json_decode(json_encode($doc), true);
+        } catch (\Throwable $e) {
+            error_log('Find existing record failed: ' . $e->getMessage());
+            return null;
+        }
+    }
 }

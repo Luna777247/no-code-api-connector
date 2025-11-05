@@ -3,16 +3,22 @@ namespace App\Controllers;
 
 use App\Support\HttpClient;
 use App\Services\RunService;
+use App\Services\DataTransformationService;
+use App\Services\ConnectionService;
 
 class PipelineController
 {
     private HttpClient $http;
     private RunService $runs;
+    private DataTransformationService $dataTransformer;
+    private ConnectionService $connections;
 
     public function __construct()
     {
         $this->http = new HttpClient();
         $this->runs = new RunService();
+        $this->dataTransformer = new DataTransformationService();
+        $this->connections = new ConnectionService();
     }
 
     // POST /api/execute-run
@@ -65,6 +71,31 @@ class PipelineController
             }
         }
 
+        // Transform and save data if connection has field mappings
+        $dataTransformationResult = null;
+        if ($res['ok'] && $body) {
+            try {
+                $connection = $this->connections->get($connectionId);
+                if ($connection && isset($connection['fieldMappings']) && isset($connection['tableName'])) {
+                    $fieldMappings = $connection['fieldMappings'];
+                    $tableName = $connection['tableName'];
+
+                    if (!empty($fieldMappings) && !empty($tableName)) {
+                        $dataTransformationResult = $this->dataTransformer->transformAndSave(
+                            $connectionId,
+                            $tableName,
+                            $fieldMappings,
+                            $body
+                        );
+                        error_log('Data transformation result: ' . json_encode($dataTransformationResult));
+                    }
+                }
+            } catch (\Throwable $e) {
+                error_log('Data transformation failed: ' . $e->getMessage());
+                // Don't fail the run if data transformation fails
+            }
+        }
+
         $runId = $this->runs->create([
             'connectionId' => $connectionId,
             'status' => $res['ok'] ? 'success' : 'failed',
@@ -79,12 +110,14 @@ class PipelineController
             'failedRequests' => $res['ok'] ? 0 : 1,
             'errorMessage' => $res['ok'] ? null : ($res['statusText'] ?? 'Request failed'),
             'response' => $body,
+            'dataTransformation' => $dataTransformationResult,
         ]);
 
         return [
             'runId' => $runId,
             'ok' => $res['ok'],
             'status' => $res['status'] ?? 0,
+            'dataTransformation' => $dataTransformationResult,
         ];
     }
 }

@@ -26,24 +26,130 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
 
   const extractFields = (obj, prefix = '$') => {
     const out = []
-    const visit = (val, path) => {
-      if (val === null || val === undefined) return
+
+    // Danh sách các trường kỹ thuật cần bỏ qua
+    const technicalFields = new Set([
+      'status', 'ok', 'success', 'message', 'headers', 'response', 'request',
+      'meta', 'pagination', 'page', 'limit', 'total', 'count', 'error',
+      'errors', 'warnings', 'info', 'debug', 'trace', 'timestamp', 'version'
+    ])
+
+    // Danh sách các trường quan trọng được ưu tiên
+    const priorityFields = new Set([
+      'id', 'name', 'type', 'location', 'address', 'price', 'cost', 'rating',
+      'description', 'coordinates', 'created_at', 'updated_at', 'metadata',
+      'title', 'label', 'value', 'code', 'category', 'tags', 'status_code',
+      'latitude', 'longitude', 'lat', 'lng', 'lon', 'geo', 'position'
+    ])
+
+    const toSnakeCase = (str) => {
+      return str
+        .replace(/([a-z])([A-Z])/g, '$1_$2') // camelCase -> snake_case
+        .replace(/[\s\-]+/g, '_') // spaces/hyphens -> underscores
+        .replace(/[^a-zA-Z0-9_]/g, '') // remove special chars
+        .toLowerCase()
+        .replace(/^_+|_+$/g, '') // trim underscores
+    }
+
+    const getFieldType = (val) => {
+      if (val === null || val === undefined || val === '') return null
+      if (typeof val === 'number') return 'Number'
+      if (typeof val === 'boolean') return 'Boolean'
+      if (typeof val === 'string') {
+        // Check if it's a date string
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val) ||
+            /^\d{4}\/\d{2}\/\d{2}/.test(val) ||
+            /^\d{2}\/\d{2}\/\d{4}/.test(val)) {
+          return 'Date'
+        }
+        return 'String'
+      }
+      if (Array.isArray(val)) return 'Array'
+      if (typeof val === 'object') return 'Object'
+      return 'String'
+    }
+
+    const visit = (val, path, isArrayItem = false) => {
+      if (val === null || val === undefined || val === '') return
+
       if (Array.isArray(val)) {
-        if (val.length > 0) visit(val[0], path + '[0]')
+        if (val.length > 0) {
+          // Nếu đây là array cấp cao nhất, giả định mỗi phần tử là một document
+          const isRootArray = path === '$'
+          if (isRootArray) {
+            // Thêm array field với [*] notation
+            const arrayPath = path + '[*]'
+            out.push({
+              path: arrayPath,
+              suggestedName: 'items',
+              type: 'Array',
+              sampleValue: val,
+              priority: 0
+            })
+            // Visit first element để lấy sub-fields
+            visit(val[0], arrayPath, true)
+          } else {
+            // Array lồng nhau
+            const fieldName = path.split('.').pop()?.split('[')[0] || 'array_field'
+            const snakeName = toSnakeCase(fieldName)
+            if (!technicalFields.has(snakeName)) {
+              out.push({
+                path: path + '[*]',
+                suggestedName: snakeName,
+                type: 'Array',
+                sampleValue: val,
+                priority: priorityFields.has(snakeName) ? 2 : 1
+              })
+              // Visit first element
+              visit(val[0], path + '[0]', true)
+            }
+          }
+        }
         return
       }
+
       if (typeof val === 'object') {
-        Object.keys(val).forEach((k) => visit(val[k], path + '.' + k))
+        // Visit all object properties
+        Object.keys(val).forEach((k) => {
+          const snakeKey = toSnakeCase(k)
+          // Skip technical fields only at root level, allow them in nested objects
+          if (path === '$' && technicalFields.has(snakeKey)) return
+
+          const newPath = path + '.' + k
+          visit(val[k], newPath, isArrayItem)
+        })
       } else {
+        // Đây là leaf field (primitive value)
+        const fieldName = path.split('.').pop()?.split('[')[0] || 'field'
+        const snakeName = toSnakeCase(fieldName)
+
+        // Skip technical fields
+        if (technicalFields.has(snakeName)) return
+
+        // Skip invalid values
+        if (val === 'NA' || val === null || val === undefined || val === '') return
+
+        const fieldType = getFieldType(val)
+        if (!fieldType) return
+
         out.push({
           path,
-          suggestedName: String(path.split('.').pop() || 'field').replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase(),
-          type: typeof val === 'number' ? 'number' : typeof val === 'boolean' ? 'boolean' : /\d{4}-\d{2}-\d{2}/.test(String(val)) ? 'date' : 'string',
+          suggestedName: snakeName,
+          type: fieldType,
           sampleValue: val,
+          priority: priorityFields.has(snakeName) ? 3 : priorityFields.has(fieldName) ? 2 : 1
         })
       }
     }
+
     visit(obj, prefix)
+
+    // Sort by priority (high to low), then by path
+    out.sort((a, b) => {
+      if (a.priority !== b.priority) return b.priority - a.priority
+      return a.path.localeCompare(b.path)
+    })
+
     return out
   }
 
@@ -70,22 +176,132 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
         }
       }
       const res = await apiClient.post('/api/test-connection', payload)
-      const body = res?.data?.body || res?.data || null
-      let json
-      try {
-        json = typeof body === 'string' ? JSON.parse(body) : body
-      } catch {
-        json = body
+      console.log('Full axios response:', res)
+      console.log('Response data:', res?.data)
+
+      // Axios already parses JSON responses, so res.data should be the parsed object
+      let json = res?.data
+
+      console.log('Parsed json from axios:', json)
+      console.log('Response structure check:')
+      console.log('- json exists:', !!json)
+      console.log('- json is object:', typeof json === 'object')
+      console.log('- json.response exists:', json && json.response)
+      console.log('- json.response.body exists:', json && json.response && json.response.body)
+      console.log('- json.response.body type:', json && json.response && json.response.body ? typeof json.response.body : 'N/A')
+
+      // Extract fields from the actual API response data, not the test metadata
+      let dataToExtract = json
+      let previewData = json
+
+      // PRIORITY: Always try to extract from response.body if it exists (this is the actual API data)
+      if (json && typeof json === 'object' && json.response && json.response.body) {
+        console.log('Found response.body, attempting to parse...')
+        try {
+          // Parse the actual API response from the body
+          const rawBody = json.response.body
+          console.log('Raw body to parse:', rawBody)
+          console.log('Raw body type:', typeof rawBody)
+
+          let parsedBody
+          if (typeof rawBody === 'string') {
+            parsedBody = JSON.parse(rawBody)
+            console.log('Parsed string body:', parsedBody)
+          } else {
+            parsedBody = rawBody
+            console.log('Body was already object:', parsedBody)
+          }
+
+          // 3. Nếu body sau khi parse vẫn là JSON string → parse thêm lần nữa
+          if (parsedBody && typeof parsedBody === 'string') {
+            try {
+              const doubleParsed = JSON.parse(parsedBody)
+              parsedBody = doubleParsed
+              console.log('Double-parsed body (was JSON string):', doubleParsed)
+            } catch (doubleParseError) {
+              console.log('Body is string but not JSON, keeping as-is')
+            }
+          }
+
+          // 4. Chuẩn hóa cấu trúc dữ liệu trước khi extract
+          let normalizedData = parsedBody
+
+          // Tự động tìm mảng dữ liệu chính
+          if (Array.isArray(parsedBody)) {
+            normalizedData = parsedBody
+            console.log('Body is already an array, using directly')
+          } else if (parsedBody?.body && Array.isArray(parsedBody.body)) {
+            normalizedData = parsedBody.body
+            console.log('Found array in parsedBody.body')
+          } else if (parsedBody?.data && Array.isArray(parsedBody.data)) {
+            normalizedData = parsedBody.data
+            console.log('Found array in parsedBody.data')
+          } else if (parsedBody?.results && Array.isArray(parsedBody.results)) {
+            normalizedData = parsedBody.results
+            console.log('Found array in parsedBody.results')
+          } else if (parsedBody?.items && Array.isArray(parsedBody.items)) {
+            normalizedData = parsedBody.items
+            console.log('Found array in parsedBody.items')
+          } else if (parsedBody?.Prices && Array.isArray(parsedBody.Prices)) {
+            normalizedData = parsedBody.Prices
+            console.log('Found array in parsedBody.Prices')
+          } else if (parsedBody?.products && Array.isArray(parsedBody.products)) {
+            normalizedData = parsedBody.products
+            console.log('Found array in parsedBody.products')
+          } else if (parsedBody?.places && Array.isArray(parsedBody.places)) {
+            normalizedData = parsedBody.places
+            console.log('Found array in parsedBody.places')
+          } else {
+            // Nếu không tìm thấy array, wrap trong array để xử lý như document đơn
+            normalizedData = [parsedBody]
+            console.log('No array found, wrapping single object in array')
+          }
+
+          dataToExtract = normalizedData
+          previewData = normalizedData // Show the normalized data in preview
+          console.log('✅ Successfully normalized API data:', normalizedData)
+          console.log('Final data type:', Array.isArray(normalizedData) ? 'Array' : typeof normalizedData)
+        } catch (parseError) {
+          console.warn('❌ Failed to parse response body:', parseError)
+          console.log('Raw response body that failed to parse:', json.response.body)
+          // Fallback: use response.body as-is
+          dataToExtract = json.response.body
+          previewData = json.response.body
+        }
+      } else {
+        // No response.body found, try to normalize the raw response
+        console.log('❌ No response.body found, normalizing raw response data')
+        console.log('Raw json:', json)
+
+        let normalizedData = json
+
+        // Try to find array in common locations
+        if (Array.isArray(json)) {
+          normalizedData = json
+        } else if (json?.data && Array.isArray(json.data)) {
+          normalizedData = json.data
+        } else if (json?.results && Array.isArray(json.results)) {
+          normalizedData = json.results
+        } else if (json?.items && Array.isArray(json.items)) {
+          normalizedData = json.items
+        } else {
+          normalizedData = [json]
+        }
+
+        dataToExtract = normalizedData
+        previewData = normalizedData
       }
       
-      // If response is an array with metadata and data, use the data part (index 1)
-      if (Array.isArray(json) && json.length >= 2) {
-        json = json[1] // Use the actual data array, not metadata
-      }
+      setPreview(previewData)
       
-      setPreview(json)
-      if (json && typeof json === 'object') {
-        const fields = extractFields(json)
+      if (dataToExtract && typeof dataToExtract === 'object') {
+        const fields = extractFields(dataToExtract)
+        console.log('Final extracted fields for mapping:', fields)
+        console.log('Field mapping summary:')
+        fields.forEach(f => {
+          console.log(`  ${f.path} -> ${f.suggestedName} (${f.type})`)
+        })
+
         if ((data?.selectedFields || []).length === 0) {
           setSelectedFields(
             fields.map((f) => ({
@@ -146,9 +362,12 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
             )}
           </div>
           {preview && (
-            <ScrollArea className="h-40 w-full rounded border bg-muted/40">
-              <pre className="p-3 text-xs whitespace-pre-wrap break-all">{JSON.stringify(preview, null, 2)}</pre>
-            </ScrollArea>
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">API Response Data (normalized for mapping):</div>
+              <ScrollArea className="h-40 w-full rounded border bg-muted/40">
+                <pre className="p-3 text-xs whitespace-pre-wrap break-all">{JSON.stringify(preview, null, 2)}</pre>
+              </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -156,12 +375,12 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Field Mapping</CardTitle>
-          <CardDescription>Chọn trường và map sang cột đích</CardDescription>
+          <CardDescription>Tự động chuẩn hóa dữ liệu API và ánh xạ vào collection api_places (xử lý JSON string, tìm mảng dữ liệu chính)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="tableName">Target Table Name</Label>
-            <Input id="tableName" value={data?.tableName || ''} onChange={(e) => onChange({ ...data, tableName: e.target.value })} placeholder="api_places_standardized" />
+            <Input id="tableName" value={data?.tableName || ''} onChange={(e) => onChange({ ...data, tableName: e.target.value })} placeholder="api_places" />
           </div>
 
           <div className="grid gap-2 sm:grid-cols-3">
@@ -180,6 +399,7 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
                   <SelectItem value="number">Number</SelectItem>
                   <SelectItem value="boolean">Boolean</SelectItem>
                   <SelectItem value="date">Date</SelectItem>
+                  <SelectItem value="array">Array</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -228,6 +448,7 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
                           <SelectItem value="number">Number</SelectItem>
                           <SelectItem value="boolean">Boolean</SelectItem>
                           <SelectItem value="date">Date</SelectItem>
+                          <SelectItem value="array">Array</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
