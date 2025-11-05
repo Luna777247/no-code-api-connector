@@ -116,6 +116,19 @@ class ScheduleRepository extends BaseRepository
         return $results[0] ?? null;
     }
 
+    public function findByConnectionId(string $connectionId): array
+    {
+        try {
+            return $this->findWithPagination(
+                ['connectionId' => $connectionId],
+                ['limit' => 100, 'maxTimeMS' => $this->getLimitedQueryTimeout()]
+            );
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
+            return [];
+        }
+    }
+
     protected function normalizeDocument($document): array
     {
         // Convert BSON document/stdClass to array recursively and string-cast ObjectId

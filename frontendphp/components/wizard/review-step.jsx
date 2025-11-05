@@ -63,10 +63,10 @@ export function ReviewStep({ data }) {
               {(parameters || []).map((p, idx) => (
                 <div key={idx} className="border rounded p-2">
                   <div className="font-medium">{p?.name}</div>
-                  <div className="text-xs text-muted-foreground">{p?.in || 'query'}</div>
-                  {p?.value && (
-                    <div className="font-mono text-xs mt-1 truncate" title={String(p.value)}>
-                      {String(p.value)}
+                  <div className="text-xs text-muted-foreground">{p?.type || 'query'}</div>
+                  {p?.values && p.values.length > 0 && (
+                    <div className="font-mono text-xs mt-1 truncate" title={String(p.values.join(', '))}>
+                      {String(p.values.slice(0, 3).join(', '))}{p.values.length > 3 ? '...' : ''}
                     </div>
                   )}
                 </div>

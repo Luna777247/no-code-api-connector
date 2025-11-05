@@ -40,10 +40,12 @@ export default function ConnectionsPage() {
     try {
       // For now, just delete the connection (deleteData parameter not implemented in backend)
       const res = await apiClient.delete(`/api/connections/${connectionId}`)
-      if (!res.data || res.status < 200 || res.status >= 300) {
+      // Check if response is successful (status 2xx or has ok: true)
+      if (res.status >= 200 && res.status < 300 && (!res.data || res.data.ok !== false)) {
+        setConnections(connections.filter(conn => conn.id !== connectionId))
+      } else {
         throw new Error('Failed to delete connection')
       }
-      setConnections(connections.filter(conn => conn.id !== connectionId))
     } catch (err) {
       console.error('[v0] Error deleting connection:', err)
       setError(err instanceof Error ? err.message : 'Failed to delete connection')

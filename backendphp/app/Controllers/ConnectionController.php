@@ -52,10 +52,14 @@ class ConnectionController
         $id = ValidationHelper::validateId($id);
 
         $input = ValidationHelper::getJsonInput();
+        error_log("Connection update input: " . json_encode($input));
         $input = ValidationHelper::sanitizeInput($input);
+        error_log("Connection update sanitized input: " . json_encode($input));
         ValidationHelper::validateUpdateRequest($this->validator, $input);
+        error_log("Connection update validation passed");
 
         $ok = $this->service->update($id, $input);
+        error_log("Connection update service result: " . ($ok ? 'true' : 'false'));
         if (!$ok) {
             http_response_code(400);
             return ['error' => 'Failed to update connection'];

@@ -76,19 +76,8 @@ class HttpClient
             );
         }
 
-        // Check for HTTP error status codes
-        if ($status >= 400) {
-            throw new HttpException(
-                "HTTP {$status} error",
-                $status,
-                [
-                    'method' => $method,
-                    'url' => $url,
-                    'response_body' => $responseBody
-                ]
-            );
-        }
-
+        // For all requests, return the response without throwing HTTP errors
+        // This allows the caller to decide how to handle different status codes
         return [
             'ok' => $status >= 200 && $status < 300,
             'status' => $status,

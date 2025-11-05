@@ -84,6 +84,19 @@ class ParameterModeRepository extends BaseRepository
         }
     }
 
+    public function findByConnectionId(string $connectionId): array
+    {
+        try {
+            return $this->findWithPagination(
+                ['connectionId' => $connectionId],
+                ['limit' => 100, 'maxTimeMS' => $this->getLimitedQueryTimeout()]
+            );
+        } catch (DatabaseException $e) {
+            // Return empty array on database errors to maintain backward compatibility
+            return [];
+        }
+    }
+
     protected function normalize($document): array
     {
         $data = (array)$document;

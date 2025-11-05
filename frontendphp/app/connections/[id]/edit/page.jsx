@@ -30,6 +30,7 @@ export default function EditConnectionPage() {
     baseUrl: '',
     method: 'GET',
     authType: 'none',
+    authConfig: {},
     isActive: true,
     headers: {}
   })
@@ -48,11 +49,37 @@ export default function EditConnectionPage() {
           baseUrl: connectionData.baseUrl || '',
           method: connectionData.method || 'GET',
           authType: connectionData.authType || 'none',
+          authConfig: connectionData.authConfig || {},
           isActive: connectionData.isActive ?? true,
           headers: connectionData.headers || {}
         })
         if (connectionData.headers) {
-          const entries = Object.entries(connectionData.headers).map(([key, value]) => ({ key, value: String(value) }))
+          let headers = connectionData.headers;
+          // If headers is array, convert to object
+          if (Array.isArray(headers)) {
+            const obj = {};
+            headers.forEach(header => {
+              if (header && typeof header === 'object') {
+                // Try different formats
+                let key, value;
+                if (header.name && header.value) {
+                  key = header.name;
+                  value = header.value;
+                } else if (header.key && header.value) {
+                  key = header.key;
+                  value = header.value;
+                } else if (Object.keys(header).length === 1) {
+                  key = Object.keys(header)[0];
+                  value = header[key];
+                }
+                if (key && value) {
+                  obj[key] = String(value);
+                }
+              }
+            });
+            headers = obj;
+          }
+          const entries = Object.entries(headers).map(([key, value]) => ({ key, value: String(value) }))
           setHeaderEntries(entries)
         }
       } catch (err) {
@@ -226,12 +253,94 @@ export default function EditConnectionPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="api_key">API Key</SelectItem>
+                  <SelectItem value="api-key">API Key</SelectItem>
                   <SelectItem value="bearer">Bearer Token</SelectItem>
                   <SelectItem value="basic">Basic Auth</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Authentication Configuration */}
+            {formData.authType === 'api-key' && (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="font-medium">API Key Configuration</h4>
+                <div>
+                  <Label htmlFor="keyName">Header Name</Label>
+                  <Input
+                    id="keyName"
+                    value={formData.authConfig?.keyName || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      authConfig: { ...prev.authConfig, keyName: e.target.value }
+                    }))}
+                    placeholder="X-API-Key"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="keyValue">API Key Value</Label>
+                  <Input
+                    id="keyValue"
+                    type="password"
+                    value={formData.authConfig?.keyValue || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      authConfig: { ...prev.authConfig, keyValue: e.target.value }
+                    }))}
+                    placeholder="Enter your API key"
+                  />
+                </div>
+              </div>
+            )}
+
+            {formData.authType === 'bearer' && (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="font-medium">Bearer Token Configuration</h4>
+                <div>
+                  <Label htmlFor="token">Bearer Token</Label>
+                  <Input
+                    id="token"
+                    type="password"
+                    value={formData.authConfig?.token || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      authConfig: { ...prev.authConfig, token: e.target.value }
+                    }))}
+                    placeholder="Enter your bearer token"
+                  />
+                </div>
+              </div>
+            )}
+
+            {formData.authType === 'basic' && (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="font-medium">Basic Authentication</h4>
+                <div>
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    value={formData.authConfig?.username || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      authConfig: { ...prev.authConfig, username: e.target.value }
+                    }))}
+                    placeholder="Enter username"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.authConfig?.password || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      authConfig: { ...prev.authConfig, password: e.target.value }
+                    }))}
+                    placeholder="Enter password"
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <Label>Status</Label>
               <div className="flex items-center gap-2 mt-2">

@@ -31,6 +31,11 @@ class DataExportController
 
     public function download(string $id): void
     {
+        // CORS headers for download endpoint
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
         $file = $this->service->getExportFile($id);
         if (!$file) {
             http_response_code(404);

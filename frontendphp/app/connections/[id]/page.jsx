@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +25,7 @@ import apiClient from "../../../services/apiClient.js"
 
 export default function ConnectionDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const connectionId = Array.isArray(params?.id) ? params.id[0] : params?.id
 
   const [connection, setConnection] = useState(null)
@@ -39,6 +41,12 @@ export default function ConnectionDetailPage() {
         if (!connectionId) return
         setLoading(true)
         const connectionRes = await apiClient.get(`/api/connections/${connectionId}`)
+        console.log('Raw connection data from API:', connectionRes.data)
+        console.log('Connection authType from API:', connectionRes.data.authType)
+        console.log('Connection authConfig from API:', connectionRes.data.authConfig)
+        console.log('Connection baseUrl from API:', connectionRes.data.baseUrl)
+        console.log('Connection method from API:', connectionRes.data.method)
+        console.log('Connection headers from API:', connectionRes.data.headers)
         setConnection(connectionRes.data)
         const runsRes = await apiClient.get(`/api/runs`, { params: { connectionId, limit: 10 } })
         setRuns(runsRes.data?.runs || [])
@@ -57,22 +65,68 @@ export default function ConnectionDetailPage() {
     setTestingConnection(true)
     setTestResult(null)
     try {
+      // Convert headers array to key-value object for API
+      const headersObject = {}
+      if (Array.isArray(connection.headers)) {
+        connection.headers.forEach(header => {
+          if (typeof header === 'object') {
+            if (header.key && header.value) {
+              headersObject[header.key] = header.value
+            } else if (Object.keys(header).length === 1) {
+              const [key, value] = Object.entries(header)[0]
+              headersObject[key] = value
+            }
+            // Skip empty objects
+          }
+        })
+      }
+
       const testData = {
         apiConfig: {
           baseUrl: connection.baseUrl,
           method: connection.method,
-          headers: connection.headers || {}
+          headers: headersObject,
+          authType: connection.authType || 'none',
+          authConfig: connection.authConfig || {}
         }
       }
+      
+      console.log('About to make API call to /api/test-connection')
+      console.log('Test data being sent:', JSON.stringify(testData, null, 2))
+
       const response = await apiClient.post('/api/test-connection', testData)
+      console.log('Raw API response received:', response)
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
+      
       const result = response.data
+      console.log('Parsed response data:', result)
+      console.log('Response body:', result.body)
+      console.log('Response success:', result.success)
+      console.log('Response status from data:', result.status)
+      console.log('Response message:', result.message)
+      
+      // Determine success based on status code (2xx) or explicit success flag
+      const isSuccess = result.success === true || (result.status >= 200 && result.status < 300)
+      console.log('Calculated isSuccess:', isSuccess)
+      
       setTestResult({
-        success: result.success,
-        message: result.success ? result.message : result.error,
+        success: isSuccess,
+        message: isSuccess ? (result.message || 'Connection successful') : (result.error || result.message || 'Connection failed'),
         status: result.status,
         statusText: result.statusText,
         timestamp: new Date()
       })
+      
+      console.log('Test result set to:', {
+        success: isSuccess,
+        message: isSuccess ? (result.message || 'Connection successful') : (result.error || result.message || 'Connection failed'),
+        status: result.status,
+        statusText: result.statusText
+      })
+      
+      // Also show an alert for immediate feedback
+      alert(`Test Result: ${isSuccess ? 'SUCCESS' : 'FAILED'}\nStatus: ${result.status}\nMessage: ${result.message || 'No message'}`)
     } catch (err) {
       setTestResult({
         success: false,
@@ -87,26 +141,10 @@ export default function ConnectionDetailPage() {
   const handleRunNow = async () => {
     if (!connection) return
     try {
-      const runData = {
-        connectionId: connection.connectionId || connection.id,
-        apiConfig: {
-          baseUrl: connection.baseUrl,
-          method: connection.method,
-          headers: connection.headers || {}
-        },
-        parameters: [],
-        fieldMappings: []
-      }
-      const response = await apiClient.post('/api/execute-run', runData)
-      const result = response.data
-      if (result.runId) {
-        alert(`Pipeline started! Run ID: ${result.runId}`)
-        window.location.reload()
-      } else {
-        alert('Failed to start pipeline')
-      }
+      // Chuyển hướng đến trang starting với connectionId
+      router.push(`/runs/starting?connectionId=${connection.id}`)
     } catch (err) {
-      alert('Run failed: ' + err)
+      alert('Run failed: ' + (err.response?.data?.message || err.message || err))
     }
   }
 
@@ -156,55 +194,70 @@ export default function ConnectionDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <BackToHomeButton />
-            <Link href="/connections">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Connections
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{connection.name}</h1>
-              <p className="text-muted-foreground">{connection.description}</p>
+        {/* Navigation Breadcrumb */}
+        <div className="flex items-center gap-2 mb-6">
+          <BackToHomeButton />
+          <span className="text-muted-foreground">/</span>
+          <Link href="/connections">
+            <Button variant="ghost" size="sm" className="h-auto p-0 text-muted-foreground hover:text-foreground">
+              Connections
+            </Button>
+          </Link>
+          <span className="text-muted-foreground">/</span>
+          <span className="text-sm font-medium">{connection.name}</span>
+        </div>
+
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight">{connection.name}</h1>
+            <p className="text-lg text-muted-foreground">{connection.description}</p>
+            <div className="flex items-center gap-4">
+              <Badge variant={connection.isActive ? "default" : "secondary"} className="text-sm">
+                {connection.isActive ? "Active" : "Inactive"}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                Created {new Date(connection.createdAt).toLocaleDateString()}
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex flex-wrap items-center gap-3">
             <Button 
               variant="outline" 
-              size="sm"
+              size="default"
               onClick={handleTestConnection}
               disabled={testingConnection}
+              className="flex items-center gap-2"
             >
               {testingConnection ? (
-                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                <Clock className="h-4 w-4 animate-spin" />
               ) : (
-                <Activity className="h-4 w-4 mr-2" />
+                <Activity className="h-4 w-4" />
               )}
               {testingConnection ? 'Testing...' : 'Test Connection'}
             </Button>
             <Button 
-              size="sm"
+              size="default"
               onClick={handleRunNow}
               disabled={!connection.isActive}
+              className="flex items-center gap-2"
             >
-              <Play className="h-4 w-4 mr-2" />
+              <Play className="h-4 w-4" />
               Run Now
             </Button>
             <Link href={`/connections/${connection.id}/edit`}>
-              <Button variant="outline" size="sm">
-                <Edit className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="default" className="flex items-center gap-2">
+                <Edit className="h-4 w-4" />
                 Edit
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* Test Result */}
+        {/* Test Result Alert */}
         {testResult && (
-          <Card className={`border ${testResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+          <Card className={`mb-8 border-l-4 ${testResult.success ? 'border-l-green-500 bg-green-50/50' : 'border-l-red-500 bg-red-50/50'}`}>
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
                 {testResult.success ? (
@@ -214,7 +267,7 @@ export default function ConnectionDetailPage() {
                 )}
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <h3 className={`font-medium ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                    <h3 className={`font-semibold ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
                       Connection Test {testResult.success ? 'Successful' : 'Failed'}
                     </h3>
                     <span className="text-xs text-muted-foreground">
@@ -235,69 +288,124 @@ export default function ConnectionDetailPage() {
           </Card>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Connection Details */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid gap-8 lg:grid-cols-12">
+          {/* Main Content - Configuration and Recent Runs */}
+          <div className="lg:col-span-8 space-y-8">
             {/* Configuration */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Settings className="h-5 w-5 text-primary" />
+                  </div>
                   Configuration
                 </CardTitle>
+                <CardDescription>
+                  API endpoint configuration and authentication settings
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium">Base URL</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <code className="text-sm bg-muted px-2 py-1 rounded flex-1">
+              <CardContent className="space-y-6">
+                {/* Base URL and Method */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Base URL</label>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
+                      <code className="text-sm font-mono flex-1 break-all">
                         {connection.baseUrl}
                       </code>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="shrink-0">
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Method</label>
-                    <div className="mt-1">
-                      <Badge variant="outline">{connection.method}</Badge>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Method</label>
+                    <div className="p-3 bg-muted/50 rounded-lg border">
+                      <Badge variant="outline" className="font-mono text-sm">
+                        {connection.method}
+                      </Badge>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Authentication</label>
-                    <div className="mt-1">
-                      <Badge variant="secondary">{connection.authType}</Badge>
+                </div>
+
+                {/* Authentication and Status */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Authentication</label>
+                    <div className="p-3 bg-muted/50 rounded-lg border">
+                      <Badge variant="secondary" className="text-sm">
+                        {connection.authType || 'None'}
+                      </Badge>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Status</label>
-                    <div className="mt-1">
-                      <Badge variant={connection.isActive ? "default" : "secondary"}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Status</label>
+                    <div className="p-3 bg-muted/50 rounded-lg border">
+                      <Badge variant={connection.isActive ? "default" : "secondary"} className="text-sm">
                         {connection.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                   </div>
                 </div>
 
-                {connection.headers && Object.keys(connection.headers).length > 0 && (
-                  <div>
-                    <label className="text-sm font-medium">Headers</label>
-                    <div className="mt-2 space-y-2">
-                      {Object.entries(connection.headers).map(([key, value]) => (
-                        <div key={key} className="flex items-center gap-2">
-                          <code className="text-xs bg-muted px-2 py-1 rounded">
-                            {key}
-                          </code>
-                          <span className="text-xs text-muted-foreground">→</span>
-                          <code className="text-xs bg-muted px-2 py-1 rounded flex-1">
-                            {typeof value === 'string' && value.length > 50 
-                              ? value.substring(0, 50) + '...' 
-                              : String(value)}
-                          </code>
-                        </div>
-                      ))}
+                {/* Headers */}
+                {connection.headers && Array.isArray(connection.headers) && connection.headers.length > 0 && (
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold text-foreground">Headers</label>
+                    <div className="space-y-2">
+                      {connection.headers.map((header, index) => {
+                        console.log('Header', index, ':', header, 'Type:', typeof header, 'Keys:', Object.keys(header))
+                        
+                        // Simplified header display logic
+                        let displayKey = '', displayValue = ''
+                        
+                        if (typeof header === 'object' && header !== null) {
+                          if (Object.keys(header).length === 0) {
+                            // Empty object
+                            displayKey = '(empty header)'
+                            displayValue = '(empty value)'
+                          } else if (header.key && header.value !== undefined) {
+                            // Format: {key: "name", value: "val"}
+                            displayKey = header.key
+                            displayValue = String(header.value || '')
+                          } else if (Object.keys(header).length === 1) {
+                            // Format: {"X-API-Key": "value"}
+                            const [key, value] = Object.entries(header)[0]
+                            displayKey = key
+                            displayValue = String(value || '')
+                          } else {
+                            // Complex object - show as raw
+                            displayKey = `Object with ${Object.keys(header).length} keys`
+                            displayValue = JSON.stringify(header)
+                          }
+                        } else if (typeof header === 'string') {
+                          // String format - try to parse as "Key: Value"
+                          const colonIndex = header.indexOf(':')
+                          if (colonIndex > 0) {
+                            displayKey = header.substring(0, colonIndex).trim()
+                            displayValue = header.substring(colonIndex + 1).trim()
+                          } else {
+                            displayKey = header
+                            displayValue = ''
+                          }
+                        } else {
+                          // Other types
+                          displayKey = `Unknown type: ${typeof header}`
+                          displayValue = String(header)
+                        }
+                        
+                        return (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+                            <code className="text-sm font-mono bg-background px-2 py-1 rounded border shrink-0">
+                              {displayKey}
+                            </code>
+                            <span className="text-muted-foreground">→</span>
+                            <code className="text-sm font-mono bg-background px-2 py-1 rounded border flex-1 min-w-0">
+                              {displayValue.length > 60 ? displayValue.substring(0, 60) + '...' : displayValue}
+                            </code>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -305,10 +413,12 @@ export default function ConnectionDetailPage() {
             </Card>
 
             {/* Recent Runs */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Clock className="h-5 w-5 text-primary" />
+                  </div>
                   Recent Runs
                 </CardTitle>
                 <CardDescription>
@@ -317,40 +427,48 @@ export default function ConnectionDetailPage() {
               </CardHeader>
               <CardContent>
                 {runs.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {runs.map((run) => (
                       <div 
                         key={run.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
-                          {run.status === 'completed' && (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          )}
-                          {run.status === 'failed' && (
-                            <XCircle className="h-4 w-4 text-red-500" />
-                          )}
-                          {run.status === 'running' && (
-                            <Activity className="h-4 w-4 text-blue-500 animate-spin" />
-                          )}
+                        <div className="flex items-center gap-4">
+                          <div className="flex-shrink-0">
+                            {run.status === 'completed' && (
+                              <div className="p-2 bg-green-100 rounded-full">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              </div>
+                            )}
+                            {run.status === 'failed' && (
+                              <div className="p-2 bg-red-100 rounded-full">
+                                <XCircle className="h-4 w-4 text-red-600" />
+                              </div>
+                            )}
+                            {run.status === 'running' && (
+                              <div className="p-2 bg-blue-100 rounded-full">
+                                <Activity className="h-4 w-4 text-blue-600 animate-spin" />
+                              </div>
+                            )}
+                          </div>
                           <div>
-                            <p className="text-sm font-medium">Run {String(run.id).substring(0, 8)}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="font-medium">Run {String(run.id).substring(0, 8)}</p>
+                            <p className="text-sm text-muted-foreground">
                               {new Date(run.startedAt).toLocaleString()}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
                           {run.recordsExtracted && (
-                            <p className="text-sm font-medium">{run.recordsExtracted} records</p>
+                            <p className="font-medium text-lg">{run.recordsExtracted.toLocaleString()}</p>
                           )}
                           {run.duration && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                               {Math.round(run.duration / 1000)}s
                             </p>
                           )}
                           {run.errorMessage && (
-                            <p className="text-xs text-red-500">
+                            <p className="text-sm text-red-500 max-w-xs truncate">
                               {String(run.errorMessage).substring(0, 50)}...
                             </p>
                           )}
@@ -359,60 +477,78 @@ export default function ConnectionDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No runs yet</p>
-                    <p className="text-sm">Click "Run Now" to execute this connection</p>
+                  <div className="text-center py-12">
+                    <div className="p-4 bg-muted/50 rounded-full w-fit mx-auto mb-4">
+                      <Clock className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-medium text-lg mb-2">No runs yet</h3>
+                    <p className="text-muted-foreground mb-4">Click "Run Now" to execute this connection</p>
+                    <Button 
+                      onClick={handleRunNow}
+                      disabled={!connection.isActive}
+                      className="flex items-center gap-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      Run Now
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Stats Sidebar */}
-          <div className="space-y-6">
-            {/* Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
+          {/* Sidebar - Statistics and Quick Actions */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Statistics */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Database className="h-5 w-5 text-primary" />
+                  </div>
                   Statistics
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Total Runs</span>
-                    <span className="font-medium">{connection.totalRuns}</span>
+                    <span className="text-sm font-medium text-muted-foreground">Total Runs</span>
+                    <span className="text-2xl font-bold">{connection.totalRuns || 0}</span>
                   </div>
                 </div>
+                
                 <Separator />
-                <div>
+                
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Success Rate</span>
-                    <span className="font-medium">{connection.successRate}%</span>
+                    <span className="text-sm font-medium text-muted-foreground">Success Rate</span>
+                    <span className="text-lg font-semibold">{connection.successRate || 0}%</span>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2 mt-2">
+                  <div className="w-full bg-muted rounded-full h-3">
                     <div 
-                      className="bg-primary h-2 rounded-full transition-all"
-                      style={{ width: `${connection.successRate}%` }}
+                      className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${connection.successRate || 0}%` }}
                     />
                   </div>
                 </div>
+                
                 <Separator />
-                <div>
+                
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Last Run</span>
-                    <span className="text-sm">
+                    <span className="text-sm font-medium text-muted-foreground">Last Run</span>
+                    <span className="text-sm font-medium">
                       {connection.lastRun ? new Date(connection.lastRun).toLocaleDateString() : 'Never'}
                     </span>
                   </div>
                 </div>
+                
                 <Separator />
-                <div>
+                
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Created</span>
-                    <span className="text-sm">
+                    <span className="text-sm font-medium text-muted-foreground">Created</span>
+                    <span className="text-sm font-medium">
                       {new Date(connection.createdAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -421,27 +557,47 @@ export default function ConnectionDetailPage() {
             </Card>
 
             {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">Quick Actions</CardTitle>
+                <CardDescription>
+                  Manage your connection settings and data
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
                 <Link href={`/mappings?connectionId=${connection.id}`}>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Field Mappings
+                  <Button variant="outline" className="w-full justify-start h-12 text-left">
+                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                      <Settings className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Field Mappings</div>
+                      <div className="text-xs text-muted-foreground">Configure data transformations</div>
+                    </div>
                   </Button>
                 </Link>
+                
                 <Link href={`/schedules?connectionId=${connection.id}`}>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Schedules
+                  <Button variant="outline" className="w-full justify-start h-12 text-left">
+                    <div className="p-2 bg-green-100 rounded-lg mr-3">
+                      <Clock className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Schedules</div>
+                      <div className="text-xs text-muted-foreground">Set up automated runs</div>
+                    </div>
                   </Button>
                 </Link>
+                
                 <Link href={`/runs?connectionId=${connection.id}`}>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Activity className="h-4 w-4 mr-2" />
-                    All Runs
+                  <Button variant="outline" className="w-full justify-start h-12 text-left">
+                    <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                      <Activity className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium">All Runs</div>
+                      <div className="text-xs text-muted-foreground">View execution history</div>
+                    </div>
                   </Button>
                 </Link>
               </CardContent>

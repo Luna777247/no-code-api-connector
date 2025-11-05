@@ -16,7 +16,7 @@ class PipelineController
     }
 
     // POST /api/execute-run
-    // Body: { connectionId, apiConfig: { baseUrl, method, headers }, parameters, fieldMappings }
+    // Body: { connectionId, apiConfig: { baseUrl, method, headers, authType, authConfig }, parameters, fieldMappings }
     public function executeRun(): array
     {
         $input = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -25,10 +25,25 @@ class PipelineController
         $url = (string)($cfg['baseUrl'] ?? '');
         $method = (string)($cfg['method'] ?? 'GET');
         $headers = (array)($cfg['headers'] ?? []);
+        $authType = (string)($cfg['authType'] ?? 'none');
+        $authConfig = (array)($cfg['authConfig'] ?? []);
 
         if ($connectionId === '' || $url === '') {
             http_response_code(400);
             return ['error' => 'connectionId and apiConfig.baseUrl are required'];
+        }
+
+        // Handle authentication by adding appropriate headers
+        if ($authType === 'bearer' && isset($authConfig['token'])) {
+            $headers['Authorization'] = 'Bearer ' . $authConfig['token'];
+        } elseif ($authType === 'basic' && isset($authConfig['username']) && isset($authConfig['password'])) {
+            $headers['Authorization'] = 'Basic ' . base64_encode($authConfig['username'] . ':' . $authConfig['password']);
+        } elseif ($authType === 'api-key' && isset($authConfig['keyName']) && isset($authConfig['keyValue'])) {
+            $keyName = $authConfig['keyName'];
+            $keyValue = $authConfig['keyValue'];
+            if ($keyValue) {
+                $headers[$keyName] = $keyValue;
+            }
         }
 
         // In a real pipeline we would expand parameters, fan-out requests, transform & load.

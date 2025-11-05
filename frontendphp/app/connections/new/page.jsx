@@ -54,6 +54,18 @@ export default function NewConnectionPage() {
   }
 
   const handleNext = () => {
+    // Basic validation before proceeding
+    if (currentStep === 1) {
+      if (!wizardData.apiConfig.name?.trim()) {
+        alert('Connection name is required')
+        return
+      }
+      if (!wizardData.apiConfig.baseUrl?.trim()) {
+        alert('Base URL is required')
+        return
+      }
+    }
+    
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1)
     }
@@ -66,6 +78,16 @@ export default function NewConnectionPage() {
   }
 
   const handleComplete = async () => {
+    // Final validation
+    if (!wizardData.apiConfig.name?.trim()) {
+      alert('Connection name is required')
+      return
+    }
+    if (!wizardData.apiConfig.baseUrl?.trim()) {
+      alert('Base URL is required')
+      return
+    }
+
     try {
       const connectionData = {
         connectionId: `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

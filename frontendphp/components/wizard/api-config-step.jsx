@@ -150,7 +150,7 @@ export function ApiConfigStep({ data, onChange }) {
               <SelectItem value="none">None</SelectItem>
               <SelectItem value="bearer">Bearer Token</SelectItem>
               <SelectItem value="basic">Basic Auth</SelectItem>
-              <SelectItem value="api_key">API Key</SelectItem>
+              <SelectItem value="api-key">API Key</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -163,8 +163,8 @@ export function ApiConfigStep({ data, onChange }) {
                 id="bearerToken"
                 type={showAuthValue ? 'text' : 'password'}
                 placeholder="Enter your bearer token"
-                value={data.authConfig.token || ''}
-                onChange={(e) => updateField('authConfig', { token: e.target.value })}
+                value={data.authConfig?.token || ''}
+                onChange={(e) => updateField('authConfig', { ...data.authConfig, token: e.target.value })}
               />
               <Button
                 type="button"
@@ -186,7 +186,7 @@ export function ApiConfigStep({ data, onChange }) {
               <Input
                 id="username"
                 placeholder="Username"
-                value={data.authConfig.username || ''}
+                value={data.authConfig?.username || ''}
                 onChange={(e) => updateField('authConfig', { ...data.authConfig, username: e.target.value })}
                 className="mt-1.5"
               />
@@ -198,7 +198,7 @@ export function ApiConfigStep({ data, onChange }) {
                   id="password"
                   type={showAuthValue ? 'text' : 'password'}
                   placeholder="Password"
-                  value={data.authConfig.password || ''}
+                  value={data.authConfig?.password || ''}
                   onChange={(e) => updateField('authConfig', { ...data.authConfig, password: e.target.value })}
                 />
                 <Button
@@ -215,14 +215,14 @@ export function ApiConfigStep({ data, onChange }) {
           </div>
         )}
 
-        {data.authType === 'api_key' && (
+        {data.authType === 'api-key' && (
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label htmlFor="apiKeyName">Key Name</Label>
               <Input
                 id="apiKeyName"
                 placeholder="e.g., X-API-Key"
-                value={data.authConfig.keyName || ''}
+                value={data.authConfig?.keyName || ''}
                 onChange={(e) => updateField('authConfig', { ...data.authConfig, keyName: e.target.value })}
                 className="mt-1.5"
               />
@@ -234,7 +234,7 @@ export function ApiConfigStep({ data, onChange }) {
                   id="apiKeyValue"
                   type={showAuthValue ? 'text' : 'password'}
                   placeholder="Enter your API key"
-                  value={data.authConfig.keyValue || ''}
+                  value={data.authConfig?.keyValue || ''}
                   onChange={(e) => updateField('authConfig', { ...data.authConfig, keyValue: e.target.value })}
                 />
                 <Button

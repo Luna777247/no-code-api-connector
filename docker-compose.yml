@@ -24,7 +24,7 @@ services:
     container_name: no-code-api-backend
     restart: unless-stopped
     environment:
-      MONGODB_URI: mongodb+srv://nguyenanhilu9785_db_user:12345@cluster0.olqzq.mongodb.net/dataplatform_db
+      MONGODB_URI: mongodb+srv://nguyenanhilu9785_db_user:123456@cluster0.olqzq.mongodb.net/dataplatform_db
       MONGODB_DATABASE: dataplatform_db
       API_CONNECTIONS_COLLECTION: api_connections
       API_RUNS_COLLECTION: api_runs
@@ -35,6 +35,7 @@ services:
     ports:
       - "8000:80"
     volumes:
+      - ./backendphp:/var/www/html
       - ./backendphp/logs:/var/www/html/logs
       - ./backendphp/dags:/var/www/html/dags
     networks:

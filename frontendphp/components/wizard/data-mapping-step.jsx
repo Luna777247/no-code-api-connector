@@ -63,6 +63,8 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
           baseUrl: apiConfig?.baseUrl,
           method: apiConfig?.method || 'GET',
           headers: (apiConfig?.headers || []).filter(h => h.key && h.value),
+          authType: apiConfig?.authType || 'none',
+          authConfig: apiConfig?.authConfig || {},
           // Send parameter definitions so backend can attach them to URL/body
           parameters: paramDefs
         }

@@ -72,8 +72,8 @@ class ConnectionValidator extends BaseValidator
         } elseif ($authType === 'bearer') {
             $this->validateRequired('authConfig.token', $data['authConfig']['token'] ?? null);
         } elseif ($authType === 'api-key') {
-            $this->validateRequired('authConfig.key', $data['authConfig']['key'] ?? null);
-            $this->validateRequired('authConfig.value', $data['authConfig']['value'] ?? null);
+            $this->validateRequired('authConfig.keyName', $data['authConfig']['keyName'] ?? null);
+            $this->validateRequired('authConfig.keyValue', $data['authConfig']['keyValue'] ?? null);
         }
 
         // Schedule validation

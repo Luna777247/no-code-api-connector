@@ -2,15 +2,18 @@
 namespace App\Services;
 
 use App\Repositories\ScheduleRepository;
+use App\Repositories\RunRepository;
 use DateTime;
 
 class ScheduleService
 {
     private ScheduleRepository $repo;
+    private RunRepository $runRepo;
 
     public function __construct()
     {
         $this->repo = new ScheduleRepository();
+        $this->runRepo = new RunRepository();
     }
 
     public function listSchedules(): array
@@ -177,7 +180,38 @@ class ScheduleService
 
     public function deleteSchedule(string $id): bool
     {
-        return $this->repo->delete($id);
+        // Get the schedule to find its ID for cascading deletes
+        $schedule = $this->repo->findById($id);
+        if (!$schedule) {
+            return false;
+        }
+
+        $scheduleId = $schedule['_id'] ?? $schedule['id'];
+        if (!$scheduleId) {
+            // If no schedule ID, just delete the schedule
+            return $this->repo->delete($id);
+        }
+
+        // Start cascading deletes
+        $success = true;
+
+        // 1. Delete related runs
+        $runs = $this->runRepo->findByScheduleId($scheduleId);
+        foreach ($runs as $run) {
+            $runId = $run['_id'] ?? $run['id'];
+            if ($runId && !$this->runRepo->delete($runId)) {
+                error_log("Failed to delete run {$runId} for schedule {$scheduleId}");
+                $success = false;
+            }
+        }
+
+        // 2. Finally, delete the schedule itself
+        if (!$this->repo->delete($id)) {
+            error_log("Failed to delete schedule {$id}");
+            $success = false;
+        }
+
+        return $success;
     }
 
     public function getSchedule(string $id): ?array

@@ -81,6 +81,23 @@ class RunRepository extends BaseRepository
         }
     }
 
+    public function delete(string $id): bool
+    {
+        try {
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->delete(
+                ['_id' => new \MongoDB\BSON\ObjectId($id)],
+                ['limit' => 1]
+            );
+
+            $result = $this->executeBulkWrite($bulk);
+            return $result->getDeletedCount() > 0;
+        } catch (DatabaseException $e) {
+            // Return false on database errors to maintain backward compatibility
+            return false;
+        }
+    }
+
     protected function normalize($document): array
     {
         $arr = json_decode(json_encode($document, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];

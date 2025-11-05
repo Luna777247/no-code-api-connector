@@ -25,20 +25,29 @@ export function DataExportDialog({ connection }) {
   const handleExport = async () => {
     setExporting(true)
     try {
-      const res = await apiClient.post(`/api/data/export`, {
+      // Step 1: Initiate export and get exportId
+      const exportRes = await apiClient.post(`/api/data/export`, {
         connectionId: connection.connectionId,
         format: exportFormat,
         includeMetadata,
       })
 
+      const { exportId, filename } = exportRes.data
+
+      // Step 2: Download the actual file
+      const downloadRes = await apiClient.get(`/api/data/export/${exportId}`, {
+        responseType: 'blob' // Important: get binary data
+      })
+
       // Create download link
-      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const url = window.URL.createObjectURL(new Blob([downloadRes.data]))
       const link = document.createElement("a")
       link.href = url
-      link.setAttribute("download", `${connection.connectionId}-export.${exportFormat}`)
+      link.setAttribute("download", filename || `${connection.connectionId}-export.${exportFormat}`)
       document.body.appendChild(link)
       link.click()
       link.parentNode.removeChild(link)
+      window.URL.revokeObjectURL(url)
 
       setOpen(false)
     } catch (err) {

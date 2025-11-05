@@ -6,6 +6,7 @@ use App\Repositories\DataRepository;
 class DataExportService
 {
     private DataRepository $dataRepo;
+    private array $exportStorage = []; // Simple in-memory storage for demo
 
     public function __construct()
     {
@@ -67,24 +68,26 @@ class DataExportService
     public function getExportFile(string $exportId): ?array
     {
         try {
-            // In a real implementation, you would retrieve the export job from database
-            // and get the stored file data. For now, we'll generate fresh data
-            // based on the exportId (which could contain encoded parameters)
+            // Check if export exists in storage
+            if (!isset($this->exportStorage[$exportId])) {
+                return null;
+            }
 
-            // For demonstration, get a small sample of data
-            $data = $this->dataRepo->getExportData([], [
-                'limit' => 10,
-                'sort' => ['createdAt' => -1]
-            ]);
+            $storedExport = $this->exportStorage[$exportId];
 
-            $jsonData = json_encode($data, JSON_PRETTY_PRINT);
+            // Determine MIME type based on format
+            $mimeType = match ($storedExport['format']) {
+                'csv' => 'text/csv',
+                'json' => 'application/json',
+                'excel' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                default => 'application/octet-stream'
+            };
 
             return [
-                'filename' => 'export_' . $exportId . '.json',
-                'mimeType' => 'application/json',
-                'path' => 'php://memory', // In real app would be file path
-                'data' => $jsonData,
-                'size' => strlen($jsonData)
+                'filename' => $storedExport['filename'],
+                'mimeType' => $mimeType,
+                'data' => $storedExport['data'],
+                'size' => $storedExport['size']
             ];
         } catch (\Throwable $e) {
             error_log("Failed to get export file: " . $e->getMessage());
@@ -170,8 +173,14 @@ class DataExportService
 
     private function storeExportJob(string $exportId, array $exportResult): void
     {
-        // In real app would save to database
-        // For now, just mock storage
+        // Store in memory for demo purposes
+        $this->exportStorage[$exportId] = [
+            'filename' => $exportResult['filename'],
+            'data' => $exportResult['data'],
+            'size' => $exportResult['size'],
+            'format' => $exportResult['format'],
+            'createdAt' => time()
+        ];
     }
 
     private function exportCsv(array $data, string $filename): array
@@ -182,8 +191,13 @@ class DataExportService
             $headers = array_keys($data[0]);
             $csvData = implode(',', $headers) . "\n";
             foreach ($data as $row) {
-                $csvData .= implode(',', array_map(function($value) {
-                    return '"' . str_replace('"', '""', $value) . '"';
+                $csvData .= @implode(',', array_map(function($value) {
+                    $stringValue = $this->convertToString($value);
+                    // Ensure it's a string before str_replace
+                    if (!is_string($stringValue)) {
+                        $stringValue = (string)$stringValue;
+                    }
+                    return '"' . @str_replace('"', '""', $stringValue) . '"';
                 }, array_values($row))) . "\n";
             }
         }
@@ -194,6 +208,36 @@ class DataExportService
             'size' => strlen($csvData),
             'format' => 'csv'
         ];
+    }
+
+    private function convertToString($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        if (is_scalar($value)) {
+            return (string)$value;
+        }
+
+        if (is_array($value) || is_object($value)) {
+            // Handle special cases
+            if (is_object($value) && method_exists($value, '__toString')) {
+                return (string)$value;
+            }
+            try {
+                return json_encode($value);
+            } catch (\Exception $e) {
+                return '[complex_object]';
+            }
+        }
+
+        // Fallback for any other type (resources, etc.)
+        try {
+            return (string)$value;
+        } catch (\Exception $e) {
+            return '[unconvertible_value]';
+        }
     }
 
     private function exportExcel(array $data, string $filename): array

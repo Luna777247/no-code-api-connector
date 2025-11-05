@@ -10,10 +10,25 @@ use App\Repositories\ScheduleRepository;
 class ConnectionCreationWithScheduleTest extends TestCase
 {
     private ConnectionService $service;
+    private array $createdConnectionIds = [];
 
     protected function setUp(): void
     {
         $this->service = new ConnectionService();
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up created connections
+        foreach ($this->createdConnectionIds as $connectionId) {
+            try {
+                $this->service->delete($connectionId);
+            } catch (\Exception $e) {
+                // Log but don't fail the test
+                error_log("Failed to cleanup connection {$connectionId}: " . $e->getMessage());
+            }
+        }
+        $this->createdConnectionIds = [];
     }
 
     public function testCreateConnectionWithScheduleEnabled()
@@ -36,6 +51,11 @@ class ConnectionCreationWithScheduleTest extends TestCase
 
         // Create the connection
         $result = $this->service->create($connectionData);
+
+        // Store for cleanup
+        if ($result && isset($result['id'])) {
+            $this->createdConnectionIds[] = $result['id'];
+        }
 
         // Assert connection was created
         $this->assertNotNull($result, 'Connection should be created successfully');
@@ -75,6 +95,11 @@ class ConnectionCreationWithScheduleTest extends TestCase
 
         // Create the connection
         $result = $this->service->create($connectionData);
+
+        // Store for cleanup
+        if ($result && isset($result['id'])) {
+            $this->createdConnectionIds[] = $result['id'];
+        }
 
         // Assert connection was created
         $this->assertNotNull($result, 'Connection should be created successfully');
