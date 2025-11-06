@@ -66,6 +66,7 @@ $router->get('/api/mappings', [new MappingController(), 'index']);
 // INTEGRATOR APIs (New - Runs)
 // ============================================
 $router->get('/api/runs', [new RunController(), 'index']);
+$router->post('/api/runs', [new RunController(), 'create']);
 
 // ============================================
 // INTEGRATOR APIs (New - Run Details)

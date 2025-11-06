@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Repositories\RunRepository;
 use App\Repositories\ConnectionRepository;
+use App\Services\ScheduleService;
 
 class RunService
 {
@@ -39,9 +40,25 @@ class RunService
                     $connectionNames[$connectionId] = $connection['name'] ?? 'Unknown Connection';
                 } catch (\Exception $e) {
                     $connectionNames[$connectionId] = 'Unknown Connection';
+                    $connection = null;
                 }
             }
             $run['connectionName'] = $connectionNames[$connectionId] ?? 'Unknown Connection';
+
+            // Populate missing apiUrl and method from connection data
+            if ($connectionId && (!isset($run['apiUrl']) || empty($run['apiUrl']))) {
+                try {
+                    if (!isset($connection)) {
+                        $connection = $this->connectionRepo->findByConnectionId($connectionId);
+                    }
+                    if ($connection) {
+                        $run['apiUrl'] = $connection['baseUrl'] ?? '';
+                        $run['method'] = $connection['method'] ?? 'GET';
+                    }
+                } catch (\Exception $e) {
+                    // Keep existing values if connection lookup fails
+                }
+            }
 
             // Add fields that frontend expects
             $run['executionTime'] = $run['executionTime'] ?? $run['duration'] ?? null;
@@ -57,7 +74,11 @@ class RunService
 
             // Fallback: extract data from response if extractedData is not available (for old runs)
             if ($run['extractedData'] === null && !empty($run['response'])) {
-                $decodedResponse = json_decode($run['response'], true);
+                if (is_array($run['response'])) {
+                    $decodedResponse = $run['response'];
+                } else {
+                    $decodedResponse = json_decode($run['response'], true);
+                }
                 if (is_array($decodedResponse)) {
                     $run['extractedData'] = isset($decodedResponse['data']) ? $decodedResponse['data'] : $decodedResponse;
                 }
@@ -75,7 +96,92 @@ class RunService
 
     public function create(array $data): string
     {
-        return $this->repo->insert($data);
+        $runId = $this->repo->insert($data);
+
+        // Update schedule statistics if this run belongs to a schedule
+        if (!empty($data['scheduleId'])) {
+            $this->updateScheduleStatistics($data['scheduleId'], $data['status'] ?? 'pending', $data['startedAt'] ?? date('c'));
+        } else {
+            // For manual runs, check if there's an active schedule for this connection
+            $connectionId = $data['connectionId'] ?? null;
+            if ($connectionId) {
+                $this->updateScheduleStatisticsForConnection($connectionId, $data['status'] ?? 'pending', $data['startedAt'] ?? date('c'));
+            }
+        }
+
+        return $runId;
+    }
+
+    private function updateScheduleStatisticsForConnection(string $connectionId, string $status, string $runTime): void
+    {
+        try {
+            // Find active schedules for this connection
+            $scheduleRepo = new \App\Repositories\ScheduleRepository();
+            $schedules = $scheduleRepo->findAll();
+
+            foreach ($schedules as $schedule) {
+                if (($schedule['connectionId'] ?? null) === $connectionId && ($schedule['isActive'] ?? false)) {
+                    // Found an active schedule for this connection, update its statistics
+                    $this->updateScheduleStatistics((string)$schedule['_id'], $status, $runTime);
+                    break; // Only update the first active schedule found
+                }
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail the run creation
+            error_log("Failed to update schedule statistics for connection {$connectionId}: " . $e->getMessage());
+        }
+    }
+
+    private function updateScheduleStatistics(string $scheduleId, string $status, string $runTime): void
+    {
+        try {
+            // Get current schedule data
+            $scheduleRepo = new \App\Repositories\ScheduleRepository();
+            $schedule = $scheduleRepo->findById($scheduleId);
+
+            if ($schedule) {
+                $updateData = [
+                    'lastRun' => $runTime,
+                    'lastStatus' => $status,
+                    'totalRuns' => (int)($schedule['totalRuns'] ?? 0) + 1,
+                ];
+
+                // Calculate next run time
+                if ($status === 'success' && ($schedule['isActive'] ?? false)) {
+                    $scheduleService = new ScheduleService();
+                    $cronExpr = $schedule['cronExpression'] ?? \App\Config\AppConfig::getDefaultCronExpression();
+                    $timezone = $schedule['timezone'] ?? \App\Config\AppConfig::getDefaultTimezone();
+                    $nextRun = $scheduleService->calculateNextRunTime($cronExpr, $timezone);
+                    if ($nextRun) {
+                        $updateData['nextRun'] = $nextRun;
+                    }
+                }
+
+                $scheduleRepo->update($scheduleId, $updateData);
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail the run creation
+            error_log("Failed to update schedule statistics for schedule {$scheduleId}: " . $e->getMessage());
+        }
+    }
+
+    private function calculateNextRunTime(string $cronExpression, string $timezone = 'UTC'): ?string
+    {
+        try {
+            // Use cron expression to calculate next run time
+            // This is a simplified implementation - in production you might want to use a proper cron library
+            $now = new \DateTime('now', new \DateTimeZone($timezone));
+
+            // For now, return a simple next run time (current time + 1 hour for testing)
+            // In a real implementation, you'd parse the cron expression
+            $nextRun = clone $now;
+            $nextRun->modify('+1 hour');
+
+            return $nextRun->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            error_log("Failed to calculate next run time: " . $e->getMessage());
+            return null;
+        }
     }
 
     public function getRunDetail(string $id): ?array
@@ -252,7 +358,7 @@ class RunService
 
     public function getRunRequests(string $id): array
     {
-        $run = $this->repo->findById($id);
+        $run = $this->getRunDetail($id); // Use enriched data instead of raw data
         if (!$run) {
             return [];
         }

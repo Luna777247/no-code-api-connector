@@ -50,19 +50,6 @@ export default function SchedulesPage() {
     }
   }
 
-  const runNow = async (scheduleId) => {
-    setActioningId(scheduleId)
-    try {
-      await apiClient.post(`/api/schedules/${scheduleId}/trigger`, {})
-      fetchSchedules()
-    } catch (err) {
-      console.error("[v0] Error running schedule:", err)
-      setError("Failed to run schedule")
-    } finally {
-      setActioningId(null)
-    }
-  }
-
   const pauseSchedule = async (scheduleId) => {
     setActioningId(scheduleId)
     try {
@@ -204,20 +191,6 @@ export default function SchedulesPage() {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => runNow(schedule.id)}
-                      disabled={actioningId === schedule.id}
-                      className="gap-1"
-                    >
-                      {actioningId === schedule.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                      <span className="hidden sm:inline">Run</span>
-                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"

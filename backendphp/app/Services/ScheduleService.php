@@ -151,7 +151,7 @@ class ScheduleService extends BaseService
         return $this->repo->update($id, $data);
     }
 
-    private function calculateNextRunTime(string $cronExpression, string $timezone = 'UTC'): ?string
+    public function calculateNextRunTime(string $cronExpression, string $timezone = 'UTC'): ?string
     {
         try {
             // Parse cron expression: minute hour day month weekday
@@ -188,6 +188,16 @@ class ScheduleService extends BaseService
                 $interval = (int)substr($hour, 2);
                 $nextRun->setTime($nextRun->format('H'), 0, 0);
                 $nextRun->modify("+{$interval} hours");
+            } elseif ($minute === '0' && $day === '1' && $month === '*' && $weekday === '*') {
+                // Monthly on the 1st at specified hour (e.g., 0 01 1 * *)
+                $nextRun->setTime((int)$hour, (int)$minute, 0);
+                $nextRun->setDate($nextRun->format('Y'), $nextRun->format('m'), 1); // Set to 1st of current month
+
+                // If we're already past the 1st of this month, move to next month
+                if ($nextRun <= $now) {
+                    $nextRun->modify('first day of next month');
+                    $nextRun->setTime((int)$hour, (int)$minute, 0);
+                }
             } else {
                 // For other patterns, add 1 hour as fallback
                 $nextRun->modify('+1 hour');

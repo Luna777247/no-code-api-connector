@@ -4,8 +4,33 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
+// Detect schedule type from CRON expression
+const detectScheduleType = (cronExpression) => {
+  if (!cronExpression) return 'daily'
+
+  const parts = cronExpression.split(' ')
+  if (parts.length < 5) return 'daily'
+
+  const [minute, hour, day, month, dayOfWeek] = parts
+
+  if (minute === '0' && hour === '*' && day === '*' && month === '*' && dayOfWeek === '*') {
+    return 'hourly'
+  } else if (minute === '0' && hour !== '*' && day === '*' && month === '*' && dayOfWeek === '*') {
+    return 'daily'
+  } else if (minute === '0' && hour !== '*' && day === '*' && month === '*' && dayOfWeek !== '*') {
+    return 'weekly'
+  } else if (minute === '0' && hour !== '*' && day !== '*' && month === '*' && dayOfWeek === '*') {
+    return 'monthly'
+  } else {
+    return 'custom'
+  }
+}
+
 export function ReviewStep({ data }) {
   const { apiConfig, parameters, dataMapping, schedule } = data || {}
+
+  // Get display type - use schedule.type if available, otherwise detect from CRON
+  const displayType = schedule?.type || detectScheduleType(schedule?.cronExpression) || 'daily'
 
   return (
     <div className="space-y-6">
@@ -115,7 +140,7 @@ export function ReviewStep({ data }) {
         <CardContent className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
             <Badge variant={schedule?.enabled ? 'default' : 'secondary'}>{schedule?.enabled ? 'Enabled' : 'Disabled'}</Badge>
-            <div className="text-muted-foreground">{schedule?.type || 'daily'}</div>
+            <div className="text-muted-foreground">{displayType}</div>
           </div>
           {schedule?.cronExpression && (
             <div>

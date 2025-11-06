@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -8,13 +8,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch'
 import { Calendar, Clock, Info } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { calculateNextRunTime, formatNextRunTime } from '@/lib/cron-utils'
 
 export function ScheduleStep({ data, onChange }) {
-  const [scheduleType, setScheduleType] = useState(data.type || 'daily')
+  const [scheduleType, setScheduleType] = useState(data.type || detectScheduleType(data.cronExpression) || 'daily')
+  const [nextRunTime, setNextRunTime] = useState(null)
 
   const updateSchedule = (field, value) => {
     onChange({ ...data, [field]: value })
   }
+
+  // Calculate next run time when CRON expression changes
+  useEffect(() => {
+    if (data.cronExpression && data.enabled) {
+      try {
+        const nextRun = calculateNextRunTime(data.cronExpression)
+        setNextRunTime(nextRun)
+
+        // Auto-detect schedule type from CRON expression
+        const detectedType = detectScheduleType(data.cronExpression)
+        if (detectedType !== data.type) {
+          updateSchedule('type', detectedType)
+        }
+      } catch (error) {
+        console.error('Error calculating next run time:', error)
+        setNextRunTime(null)
+      }
+    } else {
+      setNextRunTime(null)
+    }
+  }, [data.cronExpression, data.enabled, data.type])
+
+  // Update local scheduleType when data.type changes
+  useEffect(() => {
+    const detectedType = detectScheduleType(data.cronExpression) || 'daily'
+    setScheduleType(data.type || detectedType)
+  }, [data.type, data.cronExpression])
 
   const generateCronExpression = (type, config = {}) => {
     switch (type) {
@@ -28,6 +57,28 @@ export function ScheduleStep({ data, onChange }) {
         return `0 * * * *`
       default:
         return '0 0 * * *'
+    }
+  }
+
+  // Detect schedule type from CRON expression
+  const detectScheduleType = (cronExpression) => {
+    if (!cronExpression) return 'daily'
+
+    const parts = cronExpression.split(' ')
+    if (parts.length < 5) return 'daily'
+
+    const [minute, hour, day, month, dayOfWeek] = parts
+
+    if (minute === '0' && hour === '*' && day === '*' && month === '*' && dayOfWeek === '*') {
+      return 'hourly'
+    } else if (minute === '0' && hour !== '*' && day === '*' && month === '*' && dayOfWeek === '*') {
+      return 'daily'
+    } else if (minute === '0' && hour !== '*' && day === '*' && month === '*' && dayOfWeek !== '*') {
+      return 'weekly'
+    } else if (minute === '0' && hour !== '*' && day !== '*' && month === '*' && dayOfWeek === '*') {
+      return 'monthly'
+    } else {
+      return 'custom'
     }
   }
 
@@ -60,7 +111,23 @@ export function ScheduleStep({ data, onChange }) {
                 onValueChange={(value) => {
                   setScheduleType(value)
                   updateSchedule('type', value)
-                  updateSchedule('cronExpression', generateCronExpression(value))
+                  // Set default CRON expression based on type
+                  let defaultCron = '0 0 * * *'
+                  switch (value) {
+                    case 'hourly':
+                      defaultCron = '0 * * * *'
+                      break
+                    case 'daily':
+                      defaultCron = '0 9 * * *' // 9 AM daily
+                      break
+                    case 'weekly':
+                      defaultCron = '0 9 * * 1' // Monday 9 AM
+                      break
+                    case 'monthly':
+                      defaultCron = '0 9 1 * *' // 1st of month 9 AM
+                      break
+                  }
+                  updateSchedule('cronExpression', defaultCron)
                 }}
               >
                 <TabsList className="grid w-full grid-cols-5">
@@ -101,9 +168,17 @@ export function ScheduleStep({ data, onChange }) {
                       id="dailyTime"
                       type="time"
                       className="mt-1.5"
+                      value={data.cronExpression ? (() => {
+                        const cron = data.cronExpression.split(' ')
+                        if (cron.length >= 2) {
+                          const hour = cron[1]
+                          return `${hour}:00`
+                        }
+                        return '09:00'
+                      })() : '09:00'}
                       onChange={(e) => {
                         const [hour] = e.target.value.split(':')
-                        updateSchedule('cronExpression', generateCronExpression('daily', { hour }))
+                        updateSchedule('cronExpression', `0 ${hour} * * *`)
                       }}
                     />
                     <p className="text-xs text-muted-foreground mt-1">API will run every day at this time</p>
@@ -114,7 +189,20 @@ export function ScheduleStep({ data, onChange }) {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <Label htmlFor="weeklyDay">Day of Week</Label>
-                      <Select defaultValue="1">
+                      <Select
+                        value={data.cronExpression ? (() => {
+                          const cron = data.cronExpression.split(' ')
+                          if (cron.length >= 5) {
+                            return cron[4]
+                          }
+                          return '1'
+                        })() : '1'}
+                        onValueChange={(dayOfWeek) => {
+                          const cron = data.cronExpression ? data.cronExpression.split(' ') : ['0', '9', '*', '*', '1']
+                          cron[4] = dayOfWeek
+                          updateSchedule('cronExpression', cron.join(' '))
+                        }}
+                      >
                         <SelectTrigger id="weeklyDay" className="mt-1.5">
                           <SelectValue />
                         </SelectTrigger>
@@ -131,7 +219,25 @@ export function ScheduleStep({ data, onChange }) {
                     </div>
                     <div>
                       <Label htmlFor="weeklyTime">Run Time</Label>
-                      <Input id="weeklyTime" type="time" className="mt-1.5" />
+                      <Input
+                        id="weeklyTime"
+                        type="time"
+                        className="mt-1.5"
+                        value={data.cronExpression ? (() => {
+                          const cron = data.cronExpression.split(' ')
+                          if (cron.length >= 2) {
+                            const hour = cron[1]
+                            return `${hour}:00`
+                          }
+                          return '09:00'
+                        })() : '09:00'}
+                        onChange={(e) => {
+                          const [hour] = e.target.value.split(':')
+                          const cron = data.cronExpression ? data.cronExpression.split(' ') : ['0', '9', '*', '*', '1']
+                          cron[1] = hour
+                          updateSchedule('cronExpression', cron.join(' '))
+                        }}
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -140,7 +246,20 @@ export function ScheduleStep({ data, onChange }) {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <Label htmlFor="monthlyDay">Day of Month</Label>
-                      <Select defaultValue="1">
+                      <Select
+                        value={data.cronExpression ? (() => {
+                          const cron = data.cronExpression.split(' ')
+                          if (cron.length >= 3) {
+                            return cron[2]
+                          }
+                          return '1'
+                        })() : '1'}
+                        onValueChange={(dayOfMonth) => {
+                          const cron = data.cronExpression ? data.cronExpression.split(' ') : ['0', '9', '1', '*', '*']
+                          cron[2] = dayOfMonth
+                          updateSchedule('cronExpression', cron.join(' '))
+                        }}
+                      >
                         <SelectTrigger id="monthlyDay" className="mt-1.5">
                           <SelectValue />
                         </SelectTrigger>
@@ -155,7 +274,25 @@ export function ScheduleStep({ data, onChange }) {
                     </div>
                     <div>
                       <Label htmlFor="monthlyTime">Run Time</Label>
-                      <Input id="monthlyTime" type="time" className="mt-1.5" />
+                      <Input
+                        id="monthlyTime"
+                        type="time"
+                        className="mt-1.5"
+                        value={data.cronExpression ? (() => {
+                          const cron = data.cronExpression.split(' ')
+                          if (cron.length >= 2) {
+                            const hour = cron[1]
+                            return `${hour}:00`
+                          }
+                          return '09:00'
+                        })() : '09:00'}
+                        onChange={(e) => {
+                          const [hour] = e.target.value.split(':')
+                          const cron = data.cronExpression ? data.cronExpression.split(' ') : ['0', '9', '1', '*', '*']
+                          cron[1] = hour
+                          updateSchedule('cronExpression', cron.join(' '))
+                        }}
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -256,7 +393,12 @@ export function ScheduleStep({ data, onChange }) {
                 <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Next Scheduled Run</p>
-                  <p className="text-sm text-muted-foreground">{new Date(Date.now() + 86400000).toLocaleString()}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {data.enabled && data.cronExpression
+                      ? formatNextRunTime(nextRunTime)
+                      : 'Enable scheduling to see next run time'
+                    }
+                  </p>
                 </div>
               </div>
             </CardContent>

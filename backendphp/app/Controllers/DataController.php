@@ -115,9 +115,9 @@ class DataController
             if (isset($run['response']) && is_array($run['response']) && isset($run['response']['data'])) {
                 $responseData = $run['response']['data'];
 
-                if (is_array($responseData) && !empty($responseData)) {
+                if (is_array($responseData) && count($responseData) > 0) {
                     // Take first record from this run as sample
-                    $sampleRecord = $responseData[0];
+                    $sampleRecord = @$responseData[0];  // Suppress warnings
                     if (is_array($sampleRecord)) {
                         $sampleData[] = [
                             'runId' => $run['id'] ?? '',

@@ -14,65 +14,59 @@ import { AdvancedFilterPanel } from "@/components/data-explorer/advanced-filter-
 import { DataExportDialog } from "@/components/data-explorer/data-export-dialog.jsx"
 
 export default function DataPage() {
-  const [data, setData] = useState({
-    summary: {
-      totalRuns: 10,
-      totalRecords: 379,
-      avgExecutionTime: 2607,
-      estimatedDataSize: "194,048 bytes"
-    },
-    connectionBreakdown: [
-      {
-        connectionId: "68fe4a7620b8d96033072a82",
-        runCount: 4,
-        totalRecords: 166,
-        avgExecutionTime: 2951,
-        lastRun: "2025-10-26T16:21:11+00:00",
-        connectionName: "Unknown Connection"
-      }
-    ],
-    data: []
-  })
-  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedConnection, setSelectedConnection] = useState("all")
   const [filters, setFilters] = useState({})
-  const [filteredData, setFilteredData] = useState({
-    summary: {
-      totalRuns: 10,
-      totalRecords: 379,
-      avgExecutionTime: 2607,
-      estimatedDataSize: "194,048 bytes"
-    },
-    connectionBreakdown: [
-      {
-        connectionId: "68fe4a7620b8d96033072a82",
-        runCount: 4,
-        totalRecords: 166,
-        avgExecutionTime: 2951,
-        lastRun: "2025-10-26T16:21:11+00:00",
-        connectionName: "Unknown Connection"
-      }
-    ],
-    data: []
-  })
+  const [filteredData, setFilteredData] = useState(null)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
   useEffect(() => {
+    setLoading(true)
+    console.log('[DataPage] Fetching data from /api/data...')
     apiClient
       .get("/api/data")
-      .then((res) => {
-        const apiData = res?.data || null
-        setData(apiData)
-        setFilteredData(apiData)
-        setLoading(false)
+      .then((response) => {
+        console.log('[DataPage] SUCCESS - Full Axios Response received:', response)
+        console.log('[DataPage] Response status:', response.status)
+        console.log('[DataPage] Response data type:', typeof response.data)
+        console.log('[DataPage] Response data:', response.data)
+        
+        // Axios wraps the server response in response.data
+        const apiData = response.data
+        
+        console.log('[DataPage] Checking data structure...')
+        console.log('[DataPage] Has summary:', !!apiData?.summary)
+        console.log('[DataPage] Has connectionBreakdown:', !!apiData?.connectionBreakdown)
+        console.log('[DataPage] Summary content:', apiData?.summary)
+        
+        if (apiData && typeof apiData === 'object' && apiData.summary && apiData.connectionBreakdown) {
+          console.log('[DataPage] ✅ Valid data received, setting state')
+          setData(apiData)
+          setFilteredData(apiData)
+          setError(null)
+          setLoading(false)
+        } else {
+          console.warn('[DataPage] ❌ Invalid data structure:')
+          console.warn('  - apiData is object:', typeof apiData === 'object')
+          console.warn('  - has summary:', !!apiData?.summary)
+          console.warn('  - has connectionBreakdown:', !!apiData?.connectionBreakdown)
+          console.warn('  - full data:', apiData)
+          setError("Invalid data format from server")
+          setLoading(false)
+        }
       })
       .catch((err) => {
-        console.error('Error fetching data:', err)
-        setError("Failed to load data")
+        console.error('[DataPage] ❌ FAILED to fetch data')
+        console.error('[DataPage] Error:', err)
+        console.error('[DataPage] Error response status:', err.response?.status)
+        console.error('[DataPage] Error response data:', err.response?.data)
+        console.error('[DataPage] Error message:', err.message)
+        const errorMsg = err.response?.data?.error || err.message || 'Unknown error'
+        setError("Failed to load data: " + errorMsg)
         setLoading(false)
-        // Keep the hardcoded data as fallback
       })
   }, [])
 

@@ -68,6 +68,9 @@ export default function RunStartingPage() {
               }
             }
           })
+        } else if (typeof connectionData.headers === 'object' && connectionData.headers !== null) {
+          // Handle object format directly
+          Object.assign(headersObject, connectionData.headers)
         }
 
         const runData = {
@@ -79,7 +82,7 @@ export default function RunStartingPage() {
             authType: connectionData.authType || 'none',
             authConfig: connectionData.authConfig || {}
           },
-          parameters: [],
+          parameters: connectionData.parameters || [],
           fieldMappings: []
         }
 

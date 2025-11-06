@@ -73,6 +73,9 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: 'pymongo==4.6.3 croniter==2.0.5'
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    PHP_API_URL: 'http://backend:80'
+    MONGODB_URI: 'mongodb://mongo:27017'
+    MONGODB_DATABASE: 'api_connector'
     _AIRFLOW_DB_UPGRADE: 'true'
     _AIRFLOW_WWW_USER_CREATE: 'true'
     _AIRFLOW_WWW_USER_USERNAME: airflow
@@ -361,5 +364,45 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017
+      - MONGODB_DATABASE=api_connector
+      - APP_ENV=production
+    volumes:
+      - ./logs:/var/www/html/logs
+      - ./dags:/var/www/html/dags
+    depends_on:
+      - mongo
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost/api/admin/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=api_connector
+    volumes:
+      - mongo-data:/data/db
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+
 volumes:
   postgres-db-volume:
+  mongo-data:

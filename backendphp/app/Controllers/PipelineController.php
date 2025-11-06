@@ -5,6 +5,7 @@ use App\Support\HttpClient;
 use App\Services\RunService;
 use App\Services\DataTransformationService;
 use App\Services\ConnectionService;
+use App\Services\ExecutionService;
 
 class PipelineController
 {
@@ -12,6 +13,7 @@ class PipelineController
     private RunService $runs;
     private DataTransformationService $dataTransformer;
     private ConnectionService $connections;
+    private ExecutionService $execution;
 
     public function __construct()
     {
@@ -19,18 +21,40 @@ class PipelineController
         $this->runs = new RunService();
         $this->dataTransformer = new DataTransformationService();
         $this->connections = new ConnectionService();
+        $this->execution = new ExecutionService();
     }
 
     // POST /api/execute-run
     // Body: { connectionId, apiConfig: { baseUrl, method, headers, authType, authConfig }, parameters, fieldMappings }
     public function executeRun(): array
     {
-        $input = json_decode(file_get_contents('php://input'), true) ?? [];
-        $connectionId = (string)($input['connectionId'] ?? '');
-        $cfg = $input['apiConfig'] ?? [];
-        $url = (string)($cfg['baseUrl'] ?? '');
-        $method = (string)($cfg['method'] ?? 'GET');
-        $headers = (array)($cfg['headers'] ?? []);
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            error_log('PipelineController input: ' . json_encode($input));
+
+            $connectionId = $input['connectionId'] ?? '';
+            $cfg = $input['apiConfig'] ?? [];
+            $url = $cfg['baseUrl'] ?? '';
+            $method = $cfg['method'] ?? 'GET';
+
+            error_log("Parsed - connectionId: $connectionId, url: $url, method: $method");
+        $headers = $cfg['headers'] ?? [];
+        // Ensure headers is an associative array (key => value)
+        if (is_array($headers) && isset($headers[0]) && is_array($headers[0])) {
+            // Convert from array format [{'key': 'name', 'value': 'val'}] to associative array
+            $normalizedHeaders = [];
+            foreach ($headers as $header) {
+                if (isset($header['key']) && isset($header['value'])) {
+                    $normalizedHeaders[$header['key']] = $header['value'];
+                }
+            }
+            $headers = $normalizedHeaders;
+        } elseif (!is_array($headers)) {
+            // Convert object to array
+            $headers = (array)$headers;
+        }
+        
+        error_log('Final headers: ' . json_encode($headers));
         $authType = (string)($cfg['authType'] ?? 'none');
         $authConfig = (array)($cfg['authConfig'] ?? []);
 
@@ -52,44 +76,18 @@ class PipelineController
             }
         }
 
+        $parameters = $input['parameters'] ?? [];
+        
         // In a real pipeline we would expand parameters, fan-out requests, transform & load.
         // Here we execute a single request to validate connectivity and create a run record.
-        $startTime = microtime(true);
-        $res = $this->http->request($method, $url, $headers, null, 60);
-        $endTime = microtime(true);
+        $res = $this->execution->executeApiCallWithRetry($url, $method, $headers, $authConfig, $parameters);
         $body = $res['body'] ?? null;
 
         // Calculate execution time in milliseconds
-        $executionTime = round(($endTime - $startTime) * 1000);
+        $executionTime = $res['executionTime'] ?? 0;
 
         // Calculate records extracted from response body
-        $recordsExtracted = 0;
-        if ($res['ok'] && $body) {
-            $decodedBody = json_decode($body, true);
-            if (is_array($decodedBody)) {
-                // Check if response has a 'data' field that contains the actual records
-                if (isset($decodedBody['data'])) {
-                    $data = $decodedBody['data'];
-                    if (is_array($data)) {
-                        // Check if this is an array of records or a single record with fields
-                        $firstElement = reset($data);
-                        if (is_array($firstElement) || is_object($firstElement)) {
-                            // Array of records
-                            $recordsExtracted = count($data);
-                        } else {
-                            // Single record with multiple fields
-                            $recordsExtracted = 1;
-                        }
-                    } elseif (is_object($data) || is_array($data)) {
-                        // If data is a single record object/array, count as 1
-                        $recordsExtracted = 1;
-                    }
-                } else {
-                    // Fallback: if response itself is data, count elements
-                    $recordsExtracted = is_array($decodedBody) ? count($decodedBody) : 1;
-                }
-            }
-        }
+        $recordsExtracted = $res['recordsExtracted'] ?? 0;
 
         // Initialize variables
         $dataTransformationResult = null;
@@ -125,14 +123,7 @@ class PipelineController
         }
 
         // Extract actual data from response for frontend display
-        $extractedData = null;
-        if ($res['ok'] && $body) {
-            $decodedBody = json_decode($body, true);
-            if (is_array($decodedBody)) {
-                // Extract data field if it exists, otherwise use the whole response
-                $extractedData = isset($decodedBody['data']) ? $decodedBody['data'] : $decodedBody;
-            }
-        }
+        $extractedData = $res['responseData'] ?? null;
 
         $runId = $this->runs->create([
             'connectionId' => $connectionId,
@@ -148,7 +139,7 @@ class PipelineController
             'recordsProcessed' => $recordsProcessed, // Records processed (may include transformations)
             'recordsLoaded' => $recordsLoaded, // Records successfully loaded to database
             'failedRequests' => $res['ok'] ? 0 : 1,
-            'errorMessage' => $res['ok'] ? null : ($res['statusText'] ?? 'Request failed'),
+            'errorMessage' => $res['errorMessage'] ?? ($res['ok'] ? null : ($res['statusText'] ?? 'Request failed')),
             'response' => $body,
             'extractedData' => $extractedData,
             'dataTransformation' => $dataTransformationResult,
@@ -160,5 +151,10 @@ class PipelineController
             'status' => $res['status'] ?? 0,
             'dataTransformation' => $dataTransformationResult,
         ];
+        } catch (\Exception $e) {
+            error_log('PipelineController error: ' . $e->getMessage());
+            http_response_code(500);
+            return ['error' => 'Internal server error: ' . $e->getMessage()];
+        }
     }
 }

@@ -15,19 +15,54 @@ export default function RunsPage() {
   const [runs, setRuns] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [timeFilter, setTimeFilter] = useState("24hours")
 
   useEffect(() => {
     apiClient.get('/api/runs')
       .then(res => {
+        console.log('[DEBUG] Full API Response:', res)
         const data = res?.data || {}
-        setRuns(data.runs || [])
+        const runsData = Array.isArray(data) ? data : (data.runs || [])
+        console.log('[DEBUG] Extracted runs:', runsData)
+        setRuns(runsData)
         setLoading(false)
       })
       .catch(err => {
+        console.error('[DEBUG] Error loading runs:', err)
         setError('Failed to load runs')
         setLoading(false)
       })
   }, [])
+
+  // Filter runs based on search, status, and time
+  const filteredRuns = runs.filter(run => {
+    // Search filter
+    if (searchTerm && !run.connectionName?.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false
+    }
+
+    // Status filter
+    if (statusFilter !== "all" && run.status !== statusFilter) {
+      return false
+    }
+
+    // Time filter
+    if (timeFilter !== "all" && run.startedAt) {
+      const runDate = new Date(run.startedAt)
+      const now = new Date()
+      const diffMs = now - runDate
+      const diffHours = diffMs / (1000 * 60 * 60)
+      const diffDays = diffHours / 24
+
+      if (timeFilter === "24hours" && diffHours > 24) return false
+      if (timeFilter === "7days" && diffDays > 7) return false
+      if (timeFilter === "30days" && diffDays > 30) return false
+    }
+
+    return true
+  })
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -69,9 +104,14 @@ export default function RunsPage() {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search by connection name..." className="pl-9" />
+                <Input 
+                  placeholder="Search by connection name..." 
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-              <Select defaultValue="all">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full md:w-48">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
@@ -82,9 +122,10 @@ export default function RunsPage() {
                   <SelectItem value="failed">Failed</SelectItem>
                   <SelectItem value="running">Running</SelectItem>
                   <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
                 </SelectContent>
               </Select>
-              <Select defaultValue="7days">
+              <Select value={timeFilter} onValueChange={setTimeFilter}>
                 <SelectTrigger className="w-full md:w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -127,9 +168,19 @@ export default function RunsPage() {
               </Link>
             </CardContent>
           </Card>
+        ) : filteredRuns.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-12" suppressHydrationWarning={true}>
+              <Search className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No runs found</h3>
+              <p className="text-muted-foreground text-center">
+                Try adjusting your filters
+              </p>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-4" suppressHydrationWarning={true}>
-            {runs.map((run) => {
+            {filteredRuns.map((run) => {
               const duration = run.executionTime 
                 ? `${Math.floor(run.executionTime / 1000)}s` 
                 : "In progress..."

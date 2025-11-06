@@ -32,7 +32,10 @@ export default function EditConnectionPage() {
     authType: 'none',
     authConfig: {},
     isActive: true,
-    headers: {}
+    headers: {},
+    parameters: [],
+    fieldMappings: [],
+    tableName: ''
   })
   const [headerEntries, setHeaderEntries] = useState([])
 
@@ -51,7 +54,10 @@ export default function EditConnectionPage() {
           authType: connectionData.authType || 'none',
           authConfig: connectionData.authConfig || {},
           isActive: connectionData.isActive ?? true,
-          headers: connectionData.headers || {}
+          headers: connectionData.headers || {},
+          parameters: connectionData.parameters || [],
+          fieldMappings: connectionData.fieldMappings || [],
+          tableName: connectionData.tableName || ''
         })
         if (connectionData.headers) {
           let headers = connectionData.headers;
