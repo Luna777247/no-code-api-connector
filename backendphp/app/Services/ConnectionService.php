@@ -150,13 +150,13 @@ class ConnectionService
             $isObjectFormat = false;
 
             foreach ($headers as $header) {
-                if ((is_array($header) || is_object($header)) && (isset($header['name']) || property_exists($header, 'name')) && (isset($header['value']) || property_exists($header, 'value'))) {
+                if ((is_array($header) || is_object($header)) && (isset($header['name']) || (is_object($header) && property_exists($header, 'name'))) && (isset($header['value']) || (is_object($header) && property_exists($header, 'value')))) {
                     // Convert from [{name: 'header1', value: 'value1'}] or objects format
                     $name = is_array($header) ? $header['name'] : $header->name;
                     $value = is_array($header) ? $header['value'] : $header->value;
                     $normalizedHeaders[$name] = is_scalar($value) ? $value : json_encode($value);
                     $isObjectFormat = true;
-                } elseif ((is_array($header) || is_object($header)) && (isset($header['key']) || property_exists($header, 'key')) && (isset($header['value']) || property_exists($header, 'value'))) {
+                } elseif ((is_array($header) || is_object($header)) && (isset($header['key']) || (is_object($header) && property_exists($header, 'key'))) && (isset($header['value']) || (is_object($header) && property_exists($header, 'value')))) {
                     // Convert from [{key: 'header1', value: 'value1'}] or objects format
                     $key = is_array($header) ? $header['key'] : $header->key;
                     $value = is_array($header) ? $header['value'] : $header->value;
