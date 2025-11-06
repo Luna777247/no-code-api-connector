@@ -1,6 +1,5 @@
 <?php
 use App\Support\Router;
-use App\Controllers\ScheduleController;
 use App\Controllers\ConnectionController;
 use App\Controllers\RunController;
 use App\Controllers\DiagnosticController;
@@ -25,39 +24,29 @@ use App\Controllers\AirflowController;
 /** @var Router $router */
 
 // ============================================
-// INTEGRATOR APIs (Existing)
-// ============================================
-$router->get('/api/schedules', [new ScheduleController(), 'index']);
-
-// Connections CRUD
-$router->get('/api/connections', [new ConnectionController(), 'index']);
-$router->get('/api/connections/{id}', [new ConnectionController(), 'show']);
-$router->post('/api/connections', [new ConnectionController(), 'create']);
-$router->post('/api/connections/{id}', [new ConnectionController(), 'update']);
-$router->put('/api/connections/{id}', [new ConnectionController(), 'update']);
-$router->delete('/api/connections/{id}', [new ConnectionController(), 'delete']);
-
-// Runs listing
-$router->get('/api/runs', [new RunController(), 'index']);
-
-// Diagnostics and pipeline
-$router->post('/api/test-connection', [new DiagnosticController(), 'testConnection']);
-$router->post('/api/execute-run', [new PipelineController(), 'executeRun']);
-
-// Data & Mappings & Monitoring
-$router->get('/api/data', [new DataController(), 'index']);
-$router->get('/api/mappings', [new MappingController(), 'index']);
-$router->get('/api/status', [new StatusController(), 'index']);
-$router->get('/api/analytics/success-rate-history', [new AnalyticsController(), 'successRateHistory']);
-
-// ============================================
 // INTEGRATOR APIs (New - Schedule Management)
 // ============================================
+$router->get('/api/schedules', [new ScheduleManagementController(), 'index']);
 $router->get('/api/schedules/{id}', [new ScheduleManagementController(), 'show']);
 $router->post('/api/schedules', [new ScheduleManagementController(), 'create']);
 $router->put('/api/schedules/{id}', [new ScheduleManagementController(), 'update']);
 $router->delete('/api/schedules/{id}', [new ScheduleManagementController(), 'delete']);
 $router->get('/api/schedules/{id}/history', [new ScheduleManagementController(), 'history']);
+
+// ============================================
+// INTEGRATOR APIs (Existing)
+// ============================================
+$router->post('/api/test-connection', [new DiagnosticController(), 'testConnection']);
+$router->post('/api/execute-run', [new PipelineController(), 'executeRun']);
+
+// ============================================
+// INTEGRATOR APIs (New - Connections)
+// ============================================
+$router->get('/api/connections', [new ConnectionController(), 'index']);
+$router->get('/api/connections/{id}', [new ConnectionController(), 'show']);
+$router->post('/api/connections', [new ConnectionController(), 'create']);
+$router->put('/api/connections/{id}', [new ConnectionController(), 'update']);
+$router->delete('/api/connections/{id}', [new ConnectionController(), 'delete']);
 
 // ============================================
 // INTEGRATOR APIs (New - Parameter Modes)
@@ -67,6 +56,11 @@ $router->get('/api/parameter-modes/{id}', [new ParameterModeController(), 'show'
 $router->post('/api/parameter-modes', [new ParameterModeController(), 'create']);
 $router->put('/api/parameter-modes/{id}', [new ParameterModeController(), 'update']);
 $router->delete('/api/parameter-modes/{id}', [new ParameterModeController(), 'delete']);
+
+// ============================================
+// INTEGRATOR APIs (New - Runs)
+// ============================================
+$router->get('/api/runs', [new RunController(), 'index']);
 
 // ============================================
 // INTEGRATOR APIs (New - Run Details)
@@ -101,6 +95,7 @@ $router->delete('/api/reports/{id}', [new ReportController(), 'delete']);
 // ============================================
 $router->get('/api/analytics/charts', [new VisualizationController(), 'charts']);
 $router->get('/api/analytics/metrics', [new VisualizationController(), 'metrics']);
+$router->get('/api/status', [new StatusController(), 'index']);
 
 // ============================================
 // ADMIN APIs (New - User Management)
@@ -149,3 +144,30 @@ $router->get('/api/schedules/{id}/airflow-status', [new AirflowController(), 'ge
 $router->get('/api/schedules/{id}/airflow-history', [new AirflowController(), 'getHistory']);
 $router->post('/api/schedules/{id}/pause', [new AirflowController(), 'pause']);
 $router->post('/api/schedules/{id}/resume', [new AirflowController(), 'resume']);
+
+// ============================================
+// AIRFLOW APIs (Frontend compatibility)
+// ============================================
+// $router->get('/api/airflow/runs', [new AirflowController(), 'getRuns']);
+// $router->get('/api/airflow/dags', [new AirflowController(), 'getDags']);
+// $router->post('/api/airflow/dags/{dagId}/trigger', [new AirflowController(), 'triggerDag']);
+// $router->post('/api/airflow/dags/{dagId}/pause', [new AirflowController(), 'pauseDag']);
+// $router->post('/api/airflow/dags/{dagId}/resume', [new AirflowController(), 'resumeDag']);
+
+// ============================================
+// USER APIs (Frontend compatibility)
+// ============================================
+$router->get('/api/users', [new AdminUserController(), 'index']);
+$router->delete('/api/users/{id}', [new AdminUserController(), 'delete']);
+$router->get('/api/roles', [new AdminRoleController(), 'index']);
+
+// ============================================
+// SYSTEM APIs (Frontend compatibility)
+// ============================================
+$router->get('/api/system/settings', [new AdminSystemController(), 'config']);
+$router->put('/api/system/settings', [new AdminSystemController(), 'updateConfig']);
+
+// ============================================
+// EXPORTS APIs (Frontend compatibility)
+// ============================================
+$router->post('/api/exports', [new DataExportController(), 'export']);

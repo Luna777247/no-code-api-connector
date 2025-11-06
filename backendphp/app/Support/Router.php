@@ -5,27 +5,27 @@ class Router
 {
     private array $routes = [];
 
-    public function get(string $path, callable $handler): void
+    public function get(string $path, $handler): void
     {
         $this->map('GET', $path, $handler);
     }
 
-    public function post(string $path, callable $handler): void
+    public function post(string $path, $handler): void
     {
         $this->map('POST', $path, $handler);
     }
 
-    public function put(string $path, callable $handler): void
+    public function put(string $path, $handler): void
     {
         $this->map('PUT', $path, $handler);
     }
 
-    public function delete(string $path, callable $handler): void
+    public function delete(string $path, $handler): void
     {
         $this->map('DELETE', $path, $handler);
     }
 
-    public function map(string $method, string $path, callable $handler): void
+    public function map(string $method, string $path, $handler): void
     {
         $this->routes[$method][$this->normalize($path)] = $handler;
     }

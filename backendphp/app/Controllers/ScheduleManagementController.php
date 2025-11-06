@@ -61,20 +61,27 @@ class ScheduleManagementController
             return ['error' => 'Failed to update schedule'];
         }
 
+        // Get the updated schedule
+        $updatedSchedule = $this->service->getSchedule($id);
+        if (!$updatedSchedule) {
+            http_response_code(404);
+            return ['error' => 'Schedule not found after update'];
+        }
+
         // If activating a schedule, trigger Airflow sync
         if (isset($input['isActive']) && $input['isActive'] === true) {
             $dagId = "api_schedule_{$id}";
             try {
                 // Trigger the sync DAG in Airflow so registration happens immediately
                 $this->airflowService->triggerDagRun('api_schedule_sync', ['scheduleId' => $id]);
-                $result['airflowSyncTriggered'] = true;
+                $updatedSchedule['airflowSyncTriggered'] = true;
             } catch (\Throwable $e) {
                 // Ignore errors - schedule activation should not fail because Airflow is unavailable
-                $result['airflowSyncTriggered'] = false;
+                $updatedSchedule['airflowSyncTriggered'] = false;
             }
         }
 
-        return $result;
+        return $updatedSchedule;
     }
 
     public function delete(string $id): array
@@ -102,5 +109,19 @@ class ScheduleManagementController
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
         $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
         return $this->service->getScheduleHistory($id, $limit, $offset);
+    }
+
+    public function index(): array
+    {
+        try {
+            $items = $this->service->listSchedules();
+            return $items;
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            return [
+                'error' => 'Failed to fetch schedules',
+                'message' => $e->getMessage(),
+            ];
+        }
     }
 }
