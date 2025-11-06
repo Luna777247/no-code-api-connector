@@ -16,37 +16,48 @@ export default function ConnectionsPage() {
   const [error, setError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true)
-        const res = await apiClient.get('/api/connections')
-        const data = res.data || []
-        // Ensure data is always an array
-        const connectionsArray = Array.isArray(data) ? data : []
-        setConnections(connectionsArray)
-      } catch (err) {
-        console.error('[v0] Error fetching connections:', err)
-        setError('Failed to load connections')
-      } finally {
-        setLoading(false)
-      }
+  const loadConnections = async () => {
+    try {
+      setLoading(true)
+      setError(null) // Clear any previous errors
+      const res = await apiClient.get('/api/connections')
+      const data = res.data || []
+      // Ensure data is always an array
+      const connectionsArray = Array.isArray(data) ? data : []
+      setConnections(connectionsArray)
+    } catch (err) {
+      console.error('[v0] Error fetching connections:', err)
+      setError('Failed to load connections')
+    } finally {
+      setLoading(false)
     }
-    load()
+  }
+
+  useEffect(() => {
+    loadConnections()
   }, [])
 
-  const deleteConnection = async (connectionId, deleteData = false) => {
+  const deleteConnection = async (connectionId) => {
     setDeletingId(connectionId)
+    setError(null) // Clear any previous errors
+    
+    // Optimistic update: remove from UI immediately
+    const previousConnections = [...connections]
+    setConnections(connections.filter(conn => conn.id !== connectionId))
+    
     try {
-      // For now, just delete the connection (deleteData parameter not implemented in backend)
       const res = await apiClient.delete(`/api/connections/${connectionId}`)
       // Check if response is successful (status 2xx or has ok: true)
       if (res.status >= 200 && res.status < 300 && (!res.data || res.data.ok !== false)) {
-        setConnections(connections.filter(conn => conn.id !== connectionId))
+        // Success - connection already removed from UI
       } else {
+        // Revert optimistic update on failure
+        setConnections(previousConnections)
         throw new Error('Failed to delete connection')
       }
     } catch (err) {
+      // Revert optimistic update on error
+      setConnections(previousConnections)
       console.error('[v0] Error deleting connection:', err)
       setError(err instanceof Error ? err.message : 'Failed to delete connection')
     } finally {
@@ -74,7 +85,10 @@ export default function ConnectionsPage() {
         <Card className="border-destructive">
           <CardContent className="py-12 text-center" suppressHydrationWarning={true}>
             <div className="text-destructive mb-4">⚠️ Error loading connections</div>
-            <p className="text-muted-foreground">{error}</p>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={loadConnections} variant="outline">
+              Try Again
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -91,8 +105,8 @@ export default function ConnectionsPage() {
               </CardContent>
             </Card>
           ) : (
-            connections.map((conn, index) => (
-              <Card key={`${conn.id}-${index}`}>
+            connections.map((conn) => (
+              <Card key={conn.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

@@ -2,6 +2,7 @@
 namespace App\Controllers;
 
 use App\Services\AirflowService;
+use App\Config\AppConfig;
 
 class AirflowController
 {
@@ -18,7 +19,7 @@ class AirflowController
     public function triggerRun(string $scheduleId): array
     {
         try {
-            $dagId = "api_schedule_{$scheduleId}";
+            $dagId = AppConfig::getDagPrefix() . "_{$scheduleId}";
             $result = $this->service->triggerDagRun($dagId);
 
             if (!$result['success']) {
@@ -52,7 +53,7 @@ class AirflowController
     public function getStatus(string $scheduleId): array
     {
         try {
-            $dagId = "api_schedule_{$scheduleId}";
+            $dagId = AppConfig::getDagPrefix() . "_{$scheduleId}";
             return $this->service->getDagStatus($dagId);
         } catch (\App\Exceptions\AirflowException $e) {
             // If Airflow is not available, return mock status
@@ -152,5 +153,91 @@ class AirflowController
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Get all DAG runs (mock implementation)
+     */
+    public function getRuns(): array
+    {
+        // Mock data for DAG runs
+        return [
+            [
+                'dag_id' => 'api_schedule_68fc4c824a46b382e1020b43',
+                'run_id' => 'manual__2025-11-06T04:39:11+00:00',
+                'state' => 'success',
+                'execution_date' => '2025-11-06T04:39:11+00:00',
+                'start_date' => '2025-11-06T04:39:11+00:00',
+                'end_date' => '2025-11-06T04:39:15+00:00',
+                'duration' => 4.2
+            ],
+            [
+                'dag_id' => 'api_schedule_68fc4c824a46b382e1020b43',
+                'run_id' => 'scheduled__2025-11-05T12:00:00+00:00',
+                'state' => 'success',
+                'execution_date' => '2025-11-05T12:00:00+00:00',
+                'start_date' => '2025-11-05T12:00:00+00:00',
+                'end_date' => '2025-11-05T12:00:05+00:00',
+                'duration' => 5.1
+            ]
+        ];
+    }
+
+    /**
+     * Get all DAGs (mock implementation)
+     */
+    public function getDags(): array
+    {
+        // Mock data for DAGs
+        return [
+            [
+                'dag_id' => 'api_schedule_68fc4c824a46b382e1020b43',
+                'description' => 'API Schedule DAG for connection sync',
+                'schedule_interval' => '@daily',
+                'is_paused' => false,
+                'is_active' => true,
+                'last_parsed_time' => '2025-11-06T04:39:11+00:00',
+                'next_dagrun' => '2025-11-07T00:00:00+00:00'
+            ]
+        ];
+    }
+
+    /**
+     * Trigger a DAG (mock implementation)
+     */
+    public function triggerDag(string $dagId): array
+    {
+        return [
+            'success' => true,
+            'dag_id' => $dagId,
+            'run_id' => 'manual__' . date('Y-m-d\TH:i:sP'),
+            'message' => 'DAG triggered successfully'
+        ];
+    }
+
+    /**
+     * Pause a DAG (mock implementation)
+     */
+    public function pauseDag(string $dagId): array
+    {
+        return [
+            'success' => true,
+            'dag_id' => $dagId,
+            'is_paused' => true,
+            'message' => 'DAG paused successfully'
+        ];
+    }
+
+    /**
+     * Resume a DAG (mock implementation)
+     */
+    public function resumeDag(string $dagId): array
+    {
+        return [
+            'success' => true,
+            'dag_id' => $dagId,
+            'is_paused' => false,
+            'message' => 'DAG resumed successfully'
+        ];
     }
 }

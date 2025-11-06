@@ -5,23 +5,27 @@ use App\Repositories\ConnectionRepository;
 use App\Repositories\ScheduleRepository;
 use App\Repositories\RunRepository;
 use App\Repositories\ParameterModeRepository;
-use App\Services\AirflowService;
+use App\Services\ScheduleCreationService;
+use App\Services\UnitOfWorkInterface;
+use App\Config\AppConfig;
 
-class ConnectionService
+class ConnectionService extends BaseService
 {
     private ConnectionRepository $repo;
     private ScheduleRepository $scheduleRepo;
     private RunRepository $runRepo;
     private ParameterModeRepository $parameterModeRepo;
-    private AirflowService $airflowService;
+    private ScheduleCreationService $scheduleCreationService;
+    private UnitOfWorkInterface $unitOfWork;
 
-    public function __construct()
+    public function __construct(?UnitOfWorkInterface $unitOfWork = null)
     {
         $this->repo = new ConnectionRepository();
         $this->scheduleRepo = new ScheduleRepository();
         $this->runRepo = new RunRepository();
         $this->parameterModeRepo = new ParameterModeRepository();
-        $this->airflowService = new AirflowService();
+        $this->scheduleCreationService = new ScheduleCreationService();
+        $this->unitOfWork = $unitOfWork ?? new MongoUnitOfWork();
     }
 
     public function list(): array
@@ -38,44 +42,28 @@ class ConnectionService
 
     public function create(array $data): ?array
     {
-        $saved = $this->repo->insert($data);
-        if (!$saved) {
-            return null;
-        }
-        
-        // If connection has schedule enabled, create a schedule record
-        if (isset($data['schedule']['enabled']) && $data['schedule']['enabled']) {
-            $scheduleData = [
-                'connectionId' => $saved['_id'] ?? $saved['id'],
-                'connectionName' => $data['name'] ?? 'Unnamed Connection',
-                'scheduleType' => $data['schedule']['type'] ?? 'daily',
-                'cronExpression' => $data['schedule']['cronExpression'] ?? '0 0 * * *',
-                'timezone' => $data['schedule']['timezone'] ?? 'Asia/Ho_Chi_Minh',
-                'isActive' => true,
-                'createdAt' => date('c'),
-            ];
-            $insertedSchedule = $this->scheduleRepo->insert($scheduleData);
-            
-            // Hybrid approach: after successful insert and saveDagId, trigger Airflow sync
-            if ($insertedSchedule) {
-                $scheduleId = $insertedSchedule['_id'] ?? $insertedSchedule['id'];
-                if ($scheduleId) {
-                    $dagId = "api_schedule_{$scheduleId}";
-                    $this->scheduleRepo->saveDagId($scheduleId, $dagId);
-                    
-                    // Best-effort: trigger the sync DAG in Airflow so registration happens immediately
-                    try {
-                        // ask Airflow to run the sync job which reads schedules from MongoDB
-                        $this->airflowService->triggerDagRun('api_schedule_sync', ['scheduleId' => $scheduleId]);
-                    } catch (\Throwable $e) {
-                        // ignore errors - connection creation should not fail because Airflow is unavailable
-                        error_log("Airflow sync trigger failed for schedule {$scheduleId}: " . $e->getMessage());
-                    }
+        return $this->unitOfWork->executeInTransaction(function ($uow) use ($data) {
+            // Insert connection
+            $saved = $this->repo->insert($data);
+            if (!$saved) {
+                throw new \RuntimeException('Failed to create connection');
+            }
+
+            // If connection has schedule enabled, create a schedule record
+            if (isset($data['schedule']['enabled']) && $data['schedule']['enabled']) {
+                $scheduleResult = $this->scheduleCreationService->createScheduleForConnection(
+                    $data['schedule'],
+                    $saved['_id'] ?? $saved['id'],
+                    $data['name'] ?? 'Unnamed Connection'
+                );
+
+                if (!$scheduleResult) {
+                    throw new \RuntimeException('Failed to create schedule for connection');
                 }
             }
-        }
-        
-        return $this->normalize($saved);
+
+            return $this->normalize($saved);
+        });
     }
 
     public function update(string $id, array $data): bool
@@ -102,36 +90,24 @@ class ConnectionService
 
         // 1. Delete related schedules
         $schedules = $this->scheduleRepo->findByConnectionId($connectionId);
-        foreach ($schedules as $schedule) {
-            $scheduleId = $schedule['_id'] ?? $schedule['id'];
-            if ($scheduleId && !$this->scheduleRepo->delete($scheduleId)) {
-                error_log("Failed to delete schedule {$scheduleId} for connection {$connectionId}");
-                $success = false;
-            }
+        if (!$this->deleteCascade($schedules, 'schedule')) {
+            $success = false;
         }
 
         // 2. Delete related runs
         $runs = $this->runRepo->findByConnectionId($connectionId);
-        foreach ($runs as $run) {
-            $runId = $run['_id'] ?? $run['id'];
-            if ($runId && !$this->runRepo->delete($runId)) {
-                error_log("Failed to delete run {$runId} for connection {$connectionId}");
-                $success = false;
-            }
+        if (!$this->deleteCascade($runs, 'run')) {
+            $success = false;
         }
 
         // 3. Delete related parameter modes
         $parameterModes = $this->parameterModeRepo->findByConnectionId($connectionId);
-        foreach ($parameterModes as $paramMode) {
-            $paramModeId = $paramMode['_id'] ?? $paramMode['id'];
-            if ($paramModeId && !$this->parameterModeRepo->delete($paramModeId)) {
-                error_log("Failed to delete parameter mode {$paramModeId} for connection {$connectionId}");
-                $success = false;
-            }
+        if (!$this->deleteCascade($parameterModes, 'parameter mode')) {
+            $success = false;
         }
 
         // 4. Finally, delete the connection itself
-        if (!$this->repo->delete($id)) {
+        if (!$this->deleteEntity($id)) {
             error_log("Failed to delete connection {$id}");
             $success = false;
         }
@@ -224,5 +200,16 @@ class ConnectionService
             'totalRuns' => (int)($row['totalRuns'] ?? 0),
             'successRate' => (int)($row['successRate'] ?? 0),
         ];
+    }
+
+    /**
+     * Delete a single entity by ID
+     *
+     * @param string $id Entity ID to delete
+     * @return bool True if delete succeeded
+     */
+    protected function deleteEntity(string $id): bool
+    {
+        return $this->repo->delete($id);
     }
 }

@@ -3,17 +3,24 @@ namespace App\Services;
 
 use App\Repositories\ScheduleRepository;
 use App\Repositories\RunRepository;
+use App\Repositories\ConnectionRepository;
+use App\Services\ValidationService;
+use App\Config\AppConfig;
 use DateTime;
 
-class ScheduleService
+class ScheduleService extends BaseService
 {
     private ScheduleRepository $repo;
     private RunRepository $runRepo;
+    private ConnectionRepository $connectionRepo;
+    private ValidationService $validator;
 
     public function __construct()
     {
         $this->repo = new ScheduleRepository();
         $this->runRepo = new RunRepository();
+        $this->connectionRepo = new ConnectionRepository();
+        $this->validator = new ValidationService();
     }
 
     public function listSchedules(): array
@@ -27,13 +34,13 @@ class ScheduleService
             if (is_object($id) && method_exists($id, '__toString')) {
                 $id = (string)$id;
             }
-            $dagId = $row['dagId'] ?? "api_schedule_{$id}";
+            $dagId = $row['dagId'] ?? AppConfig::getDagPrefix() . "_{$id}";
 
             // Calculate next run time if not set and schedule is active
             $nextRun = $row['nextRun'] ?? null;
             if ($nextRun === null && ($row['isActive'] ?? false)) {
-                $cronExpr = $row['cronExpression'] ?? '* * * * *';
-                $timezone = $row['timezone'] ?? 'Asia/Ho_Chi_Minh';
+                $cronExpr = $row['cronExpression'] ?? AppConfig::getDefaultCronExpression();
+                $timezone = $row['timezone'] ?? AppConfig::getDefaultTimezone();
                 $nextRun = $this->calculateNextRunTime($cronExpr, $timezone);
                 // Optionally update the database with the calculated next run time
                 if ($nextRun) {
@@ -46,8 +53,8 @@ class ScheduleService
                 'dagId' => $dagId,
                 'connectionName' => $row['connectionName'] ?? 'Unknown',
                 'scheduleType' => $row['scheduleType'] ?? 'custom',
-                'cronExpression' => $row['cronExpression'] ?? '* * * * *',
-                'timezone' => $row['timezone'] ?? 'Asia/Ho_Chi_Minh',
+                'cronExpression' => $row['cronExpression'] ?? AppConfig::getDefaultCronExpression(),
+                'timezone' => $row['timezone'] ?? AppConfig::getDefaultTimezone(),
                 'isActive' => (bool)($row['isActive'] ?? false),
                 'nextRun' => $nextRun,
                 'lastRun' => $row['lastRun'] ?? null,
@@ -60,19 +67,18 @@ class ScheduleService
 
     public function createSchedule(array $input): ?array
     {
-        $data = [
-            'connectionId' => $input['connectionId'] ?? '',
-            'connectionName' => $input['connectionName'] ?? '',
-            'description' => $input['description'] ?? '',
-            'scheduleType' => $input['scheduleType'] ?? 'cron',
-            'cronExpression' => $input['cronExpression'] ?? '* * * * *',
-            'timezone' => $input['timezone'] ?? 'Asia/Ho_Chi_Minh', // Default to Vietnam timezone
-            'isActive' => (bool)($input['isActive'] ?? true),
+        // Validate input data
+        $validatedData = $this->validator->validateScheduleData($input);
+
+        // Validate that connection exists
+        $this->validateConnectionExists($validatedData['connectionId']);
+
+        $data = array_merge($validatedData, [
             'nextRun' => null,
             'lastRun' => null,
             'lastStatus' => 'pending',
             'totalRuns' => 0,
-        ];
+        ]);
 
         // Calculate next run time if active
         if ($data['isActive']) {
@@ -85,6 +91,23 @@ class ScheduleService
             unset($result['_id']);
         }
         return $result;
+    }
+
+    /**
+     * Validate that a connection exists
+     *
+     * @param string $connectionId
+     * @throws ValidationException
+     */
+    private function validateConnectionExists(string $connectionId): void
+    {
+        $connection = $this->connectionRepo->findById($connectionId);
+        if (!$connection) {
+            throw new \App\Exceptions\ValidationException(
+                ['connectionId' => 'Connection does not exist'],
+                "Connection with ID '{$connectionId}' does not exist"
+            );
+        }
     }
 
     public function updateSchedule(string $id, array $input): bool
@@ -115,8 +138,8 @@ class ScheduleService
             // Get current schedule to check if it will be active and get timezone
             $currentSchedule = $this->repo->findById($id);
             $willBeActive = isset($input['isActive']) ? (bool)$input['isActive'] : ($currentSchedule['isActive'] ?? false);
-            $cronExpr = $input['cronExpression'] ?? ($currentSchedule['cronExpression'] ?? '* * * * *');
-            $timezone = $input['timezone'] ?? ($currentSchedule['timezone'] ?? 'Asia/Ho_Chi_Minh');
+            $cronExpr = $input['cronExpression'] ?? ($currentSchedule['cronExpression'] ?? AppConfig::getDefaultCronExpression());
+            $timezone = $input['timezone'] ?? ($currentSchedule['timezone'] ?? AppConfig::getDefaultTimezone());
 
             if ($willBeActive) {
                 $data['nextRun'] = $this->calculateNextRunTime($cronExpr, $timezone);
@@ -153,7 +176,7 @@ class ScheduleService
                 if ($nextRun <= $now) {
                     $nextRun->modify('+1 day');
                 }
-            } elseif ($cronExpression === '* * * * *') {
+            } elseif ($cronExpression === AppConfig::getDefaultCronExpression()) {
                 // Every minute
                 $nextRun->modify('+1 minute');
             } elseif (strpos($cronExpression, '*/') === 0) {
@@ -189,7 +212,7 @@ class ScheduleService
         $scheduleId = $schedule['_id'] ?? $schedule['id'];
         if (!$scheduleId) {
             // If no schedule ID, just delete the schedule
-            return $this->repo->delete($id);
+            return $this->deleteEntity($id);
         }
 
         // Start cascading deletes
@@ -197,16 +220,12 @@ class ScheduleService
 
         // 1. Delete related runs
         $runs = $this->runRepo->findByScheduleId($scheduleId);
-        foreach ($runs as $run) {
-            $runId = $run['_id'] ?? $run['id'];
-            if ($runId && !$this->runRepo->delete($runId)) {
-                error_log("Failed to delete run {$runId} for schedule {$scheduleId}");
-                $success = false;
-            }
+        if (!$this->deleteCascade($runs, 'run')) {
+            $success = false;
         }
 
         // 2. Finally, delete the schedule itself
-        if (!$this->repo->delete($id)) {
+        if (!$this->deleteEntity($id)) {
             error_log("Failed to delete schedule {$id}");
             $success = false;
         }
@@ -232,8 +251,8 @@ class ScheduleService
             'dagId' => $dagId,
             'connectionName' => $row['connectionName'] ?? 'Unknown',
             'scheduleType' => $row['scheduleType'] ?? 'custom',
-            'cronExpression' => $row['cronExpression'] ?? '* * * * *',
-            'timezone' => $row['timezone'] ?? 'Asia/Ho_Chi_Minh',
+            'cronExpression' => $row['cronExpression'] ?? AppConfig::getDefaultCronExpression(),
+            'timezone' => $row['timezone'] ?? AppConfig::getDefaultTimezone(),
             'isActive' => (bool)($row['isActive'] ?? false),
             'nextRun' => $row['nextRun'] ?? null,
             'lastRun' => $row['lastRun'] ?? null,
@@ -264,5 +283,16 @@ class ScheduleService
         }
 
         return $history;
+    }
+
+    /**
+     * Delete a single entity by ID
+     *
+     * @param string $id Entity ID to delete
+     * @return bool True if delete succeeded
+     */
+    protected function deleteEntity(string $id): bool
+    {
+        return $this->repo->delete($id);
     }
 }

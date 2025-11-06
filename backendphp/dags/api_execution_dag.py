@@ -7,6 +7,7 @@ import os
 import sys
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
+import requests
 
 sys.path.insert(0, '/opt/airflow/dags')
 
@@ -36,52 +37,52 @@ def create_api_execution_dag(schedule_id, connection_id, api_url, method='GET', 
         print(f"[Airflow] Connection: {connection_id}")
         print(f"[Airflow] URL: {api_url}")
     
-    def after_execute(response, **context):
-        """Save execution result to MongoDB"""
-        try:
-            # Get MongoDB connection details from environment
-            mongo_uri = os.getenv('MONGODB_URI')
-            mongo_db = os.getenv('MONGODB_DATABASE', 'api_connector')
+def create_run_record(schedule_id, connection_id, **context):
+    """Create initial run record in MongoDB"""
+    try:
+        # Get MongoDB connection details from environment
+        mongo_uri = os.getenv('MONGODB_URI')
+        mongo_db = os.getenv('MONGODB_DATABASE', 'api_connector')
 
-            if not mongo_uri:
-                print("[Airflow] MONGODB_URI not set, skipping result save")
-                return
+        if not mongo_uri:
+            print("[Airflow] MONGODB_URI not set, skipping run creation")
+            return None
 
-            # Connect to MongoDB
-            client = MongoClient(mongo_uri)
-            db = client[mongo_db]
-            collection = db['api_runs']
+        # Connect to MongoDB
+        client = MongoClient(mongo_uri)
+        db = client[mongo_db]
+        collection = db['api_runs']
 
-            result = {
-                'scheduleId': schedule_id,
-                'connectionId': connection_id,
-                'status': 'success' if response.status_code < 400 else 'failed',
-                'statusCode': response.status_code,
-                'duration': context['task_instance'].duration,
-                'recordsProcessed': len(response.json()) if isinstance(response.json(), list) else 1,
-                'executedAt': context['execution_date'].isoformat(),
-                'triggeredBy': 'airflow_scheduler',
-            }
+        run_data = {
+            'scheduleId': schedule_id,
+            'connectionId': connection_id,
+            'status': 'running',
+            'startedAt': context['execution_date'].isoformat(),
+            'triggeredBy': 'airflow_scheduler',
+        }
 
-            collection.insert_one(result)
-            print(f"[Airflow] Execution result saved: {result['status']}")
+        result = collection.insert_one(run_data)
+        run_id = str(result.inserted_id)
+        print(f"[Airflow] Created run record: {run_id}")
 
-            # Close connection
-            client.close()
+        # Close connection
+        client.close()
 
-        except PyMongoError as e:
-            print(f"[Airflow] MongoDB error saving result: {str(e)}")
-        except Exception as e:
-            print(f"[Airflow] Error saving execution result: {str(e)}")
-            raise
-    
-    # Pre-execution task
-    pre_task = PythonOperator(
-        task_id='pre_execute',
-        python_callable=before_execute,
+        return run_id
+
+    except PyMongoError as e:
+        print(f"[Airflow] MongoDB error creating run: {str(e)}")
+        return None
+    except Exception as e:
+        print(f"[Airflow] Error creating run record: {str(e)}")
+        return None    # Create run record task
+    create_run_task = PythonOperator(
+        task_id='create_run_record',
+        python_callable=create_run_record,
+        op_args=[schedule_id, connection_id],
         dag=dag,
     )
-    
+
     # HTTP call task
     http_task = HttpOperator(
         task_id='execute_api',
@@ -91,18 +92,18 @@ def create_api_execution_dag(schedule_id, connection_id, api_url, method='GET', 
         headers=headers or {},
         dag=dag,
     )
-    
-    # Post-execution task
-    post_task = PythonOperator(
-        task_id='post_execute',
+
+    # Execute and update run task
+    execute_task = PythonOperator(
+        task_id='execute_and_update',
         python_callable=after_execute,
-        op_kwargs={'response': '{{ task_instance.xcom_pull(task_ids="execute_api") }}'},
+        op_kwargs={'run_id': '{{ task_instance.xcom_pull(task_ids="create_run_record") }}'},
         dag=dag,
     )
-    
+
     # Set dependencies
-    pre_task >> http_task >> post_task
-    
+    create_run_task >> http_task >> execute_task
+
     return dag
 
 # Example: Create DAG for a specific schedule
@@ -113,3 +114,25 @@ example_dag = create_api_execution_dag(
     api_url='/api/data',
     method='GET',
 )
+
+def after_execute(run_id, **context):
+    """Update run with execution result by calling PHP API"""
+    if not run_id:
+        print("[Airflow] No run_id provided, skipping execution")
+        return
+
+    try:
+        # Get PHP API base URL from environment
+        php_api_url = os.getenv('PHP_API_URL', 'http://localhost:8000')
+
+        # Call execute endpoint to update run with actual data
+        execute_url = f"{php_api_url}/api/runs/{run_id}/execute"
+        response = requests.post(execute_url, timeout=60)
+
+        if response.status_code == 200:
+            print(f"[Airflow] Run {run_id} executed and updated successfully")
+        else:
+            print(f"[Airflow] Failed to execute run {run_id}: {response.text}")
+
+    except Exception as e:
+        print(f"[Airflow] Error executing run {run_id}: {str(e)}")

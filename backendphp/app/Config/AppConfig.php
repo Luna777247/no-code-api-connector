@@ -47,7 +47,7 @@ class AppConfig
     // HTTP Timeouts (in seconds)
     public static function getHttpRequestTimeout(): int
     {
-        return (int)(getenv('HTTP_REQUEST_TIMEOUT_SECONDS') ?: 30);
+        return (int)(getenv('HTTP_REQUEST_TIMEOUT_SECONDS') ?: 60);
     }
 
     // Airflow Configuration
@@ -148,5 +148,33 @@ class AppConfig
     public static function getCachePrefix(): string
     {
         return getenv('CACHE_PREFIX') ?: 'api_connector';
+    }
+
+    // Schedule and DAG Constants
+    public static function getDagPrefix(): string
+    {
+        return getenv('DAG_PREFIX') ?: 'api_schedule';
+    }
+
+    public static function getDefaultTimezone(): string
+    {
+        return getenv('DEFAULT_TIMEZONE') ?: 'Asia/Ho_Chi_Minh';
+    }
+
+    public static function getDefaultCronExpression(): string
+    {
+        return getenv('DEFAULT_CRON_EXPRESSION') ?: '* * * * *';
+    }
+
+    // Schedule Types
+    public static function getSupportedScheduleTypes(): array
+    {
+        return ['cron', 'interval', 'manual'];
+    }
+
+    // HTTP Methods
+    public static function getSupportedHttpMethods(): array
+    {
+        return ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
     }
 }

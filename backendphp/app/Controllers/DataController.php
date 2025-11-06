@@ -65,6 +65,9 @@ class DataController
 
         $connectionBreakdown = $this->enrichWithConnectionNames(array_values($byConnection));
 
+        // Get sample data from recent runs
+        $sampleData = $this->getSampleDataFromRuns($runs);
+
         return [
             'summary' => [
                 'totalRuns' => $totalRuns,
@@ -73,7 +76,7 @@ class DataController
                 'estimatedDataSize' => $estimatedDataSize,
             ],
             'connectionBreakdown' => $connectionBreakdown,
-            'data' => [],
+            'data' => $sampleData,
         ];
     }
 
@@ -95,5 +98,41 @@ class DataController
         }
         
         return $connections;
+    }
+
+    private function getSampleDataFromRuns(array $runs): array
+    {
+        $sampleData = [];
+        $maxSamples = 10; // Limit to 10 samples
+        $count = 0;
+
+        foreach ($runs as $run) {
+            if ($count >= $maxSamples) {
+                break;
+            }
+
+            // Check if run has response data
+            if (isset($run['response']) && is_array($run['response']) && isset($run['response']['data'])) {
+                $responseData = $run['response']['data'];
+
+                if (is_array($responseData) && !empty($responseData)) {
+                    // Take first record from this run as sample
+                    $sampleRecord = $responseData[0];
+                    if (is_array($sampleRecord)) {
+                        $sampleData[] = [
+                            'runId' => $run['id'] ?? '',
+                            'connectionId' => $run['connectionId'] ?? '',
+                            'connectionName' => $run['connectionName'] ?? 'Unknown',
+                            'extractedAt' => $run['startedAt'] ?? $run['createdAt'] ?? date('c'),
+                            'data' => $sampleRecord,
+                            'recordCount' => count($responseData)
+                        ];
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        return $sampleData;
     }
 }

@@ -6,11 +6,17 @@ use App\Repositories\DataRepository;
 class DataExportService
 {
     private DataRepository $dataRepo;
-    private array $exportStorage = []; // Simple in-memory storage for demo
+    private string $exportDir;
 
     public function __construct()
     {
         $this->dataRepo = new DataRepository();
+        $this->exportDir = __DIR__ . '/../../exports/';
+        
+        // Create exports directory if it doesn't exist
+        if (!is_dir($this->exportDir)) {
+            mkdir($this->exportDir, 0755, true);
+        }
     }
 
     public function exportData(array $params): ?array
@@ -68,15 +74,21 @@ class DataExportService
     public function getExportFile(string $exportId): ?array
     {
         try {
-            // Check if export exists in storage
-            if (!isset($this->exportStorage[$exportId])) {
+            // Check if export file exists on disk
+            $filePath = $this->exportDir . $exportId . '.export';
+            
+            if (!file_exists($filePath)) {
                 return null;
             }
 
-            $storedExport = $this->exportStorage[$exportId];
+            $exportData = json_decode(file_get_contents($filePath), true);
+            
+            if (!$exportData) {
+                return null;
+            }
 
             // Determine MIME type based on format
-            $mimeType = match ($storedExport['format']) {
+            $mimeType = match ($exportData['format']) {
                 'csv' => 'text/csv',
                 'json' => 'application/json',
                 'excel' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -84,10 +96,10 @@ class DataExportService
             };
 
             return [
-                'filename' => $storedExport['filename'],
+                'filename' => $exportData['filename'],
                 'mimeType' => $mimeType,
-                'data' => $storedExport['data'],
-                'size' => $storedExport['size']
+                'data' => $exportData['data'],
+                'size' => $exportData['size']
             ];
         } catch (\Throwable $e) {
             error_log("Failed to get export file: " . $e->getMessage());
@@ -173,14 +185,18 @@ class DataExportService
 
     private function storeExportJob(string $exportId, array $exportResult): void
     {
-        // Store in memory for demo purposes
-        $this->exportStorage[$exportId] = [
+        // Store file on disk instead of memory
+        $filePath = $this->exportDir . $exportId . '.export';
+        
+        $exportData = [
             'filename' => $exportResult['filename'],
             'data' => $exportResult['data'],
             'size' => $exportResult['size'],
             'format' => $exportResult['format'],
             'createdAt' => time()
         ];
+        
+        file_put_contents($filePath, json_encode($exportData));
     }
 
     private function exportCsv(array $data, string $filename): array

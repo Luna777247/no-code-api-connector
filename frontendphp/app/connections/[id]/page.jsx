@@ -48,8 +48,23 @@ export default function ConnectionDetailPage() {
         console.log('Connection method from API:', connectionRes.data.method)
         console.log('Connection headers from API:', connectionRes.data.headers)
         setConnection(connectionRes.data)
-        const runsRes = await apiClient.get(`/api/runs`, { params: { connectionId, limit: 10 } })
-        setRuns(runsRes.data?.runs || [])
+        const runsRes = await apiClient.get(`/api/runs`, { params: { connectionId: connectionRes.data.connectionId, limit: 10 } })
+        const runsData = runsRes.data?.runs || []
+        setRuns(runsData)
+        
+        // Calculate statistics from runs
+        const totalRuns = runsData.length
+        const successfulRuns = runsData.filter(run => run.status === 'success').length
+        const successRate = totalRuns > 0 ? Math.round((successfulRuns / totalRuns) * 100) : 0
+        const lastRun = runsData.length > 0 ? runsData[0].startedAt : null
+        
+        // Update connection with calculated stats
+        setConnection(prev => ({
+          ...prev,
+          totalRuns,
+          successRate,
+          lastRun
+        }))
       } catch (err) {
         console.error('[v0] Error fetching connection:', err)
         setError(err instanceof Error ? err.message : 'Failed to load connection')
@@ -435,7 +450,7 @@ export default function ConnectionDetailPage() {
                       >
                         <div className="flex items-center gap-4">
                           <div className="flex-shrink-0">
-                            {run.status === 'completed' && (
+                            {(run.status === 'completed' || run.status === 'success') && (
                               <div className="p-2 bg-green-100 rounded-full">
                                 <CheckCircle className="h-4 w-4 text-green-600" />
                               </div>

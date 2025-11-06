@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { Progress } from "@/components/ui/progress"
 import { BackToHomeButton } from "@/components/ui/back-to-home-button"
 import apiClient from "../../../services/apiClient.js"
 
@@ -13,10 +14,12 @@ export default function RunStartingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const connectionId = searchParams.get('connectionId')
-  const [status, setStatus] = useState('starting') // starting, success, error
-  const [runId, setRunId] = useState(null)
+  const [progress, setProgress] = useState(0)
+  const [timeElapsed, setTimeElapsed] = useState(0)
+  const [status, setStatus] = useState('loading')
   const [error, setError] = useState(null)
   const [connection, setConnection] = useState(null)
+  const [runId, setRunId] = useState(null)
 
   useEffect(() => {
     if (!connectionId) {
@@ -25,13 +28,32 @@ export default function RunStartingPage() {
       return
     }
 
+    let progressInterval
+
     const startRun = async () => {
       try {
+        // Reset progress
+        setProgress(0)
+        setTimeElapsed(0)
+
+        // Start progress timer
+        progressInterval = setInterval(() => {
+          setTimeElapsed(prev => {
+            const newTime = prev + 1
+            // Estimate progress based on time (rough estimate)
+            const estimatedProgress = Math.min((newTime / 30) * 100, 90) // Max 90% until completion
+            setProgress(estimatedProgress)
+            return newTime
+          })
+        }, 1000)
+
         // Bước 1: Lấy thông tin connection
         setStatus('starting')
+        setProgress(10)
         const connectionRes = await apiClient.get(`/api/connections/${connectionId}`)
         const connectionData = connectionRes.data
         setConnection(connectionData)
+        setProgress(20)
 
         // Bước 2: Tạo run
         const headersObject = {}
@@ -61,8 +83,15 @@ export default function RunStartingPage() {
           fieldMappings: []
         }
 
+        setProgress(30)
         const response = await apiClient.post('/api/execute-run', runData)
         const result = response.data
+
+        console.log('API Response:', response)
+        console.log('Result data:', result)
+
+        clearInterval(progressInterval)
+        setProgress(100)
 
         if (result.runId) {
           setRunId(result.runId)
@@ -77,12 +106,19 @@ export default function RunStartingPage() {
         }
       } catch (err) {
         console.error('Error starting run:', err)
+        if (progressInterval) clearInterval(progressInterval)
         setStatus('error')
         setError(err.response?.data?.message || err.message || 'Failed to start pipeline')
+        setProgress(0)
       }
     }
 
     startRun()
+
+    // Cleanup function
+    return () => {
+      if (progressInterval) clearInterval(progressInterval)
+    }
   }, [connectionId, router])
 
   const getStatusContent = () => {
@@ -91,7 +127,7 @@ export default function RunStartingPage() {
         return {
           icon: <Loader2 className="h-12 w-12 text-blue-500 animate-spin" />,
           title: "Starting Pipeline",
-          description: "Initializing your API pipeline execution...",
+          description: "Executing API call and processing data. This may take up to 30 seconds...",
           color: "text-blue-600"
         }
       case 'success':
@@ -150,6 +186,20 @@ export default function RunStartingPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
+              {/* Progress Bar - only show when starting */}
+              {status === 'starting' && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Progress</span>
+                    <span>{Math.round(progress)}% • {timeElapsed}s elapsed</span>
+                  </div>
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-xs text-muted-foreground text-center">
+                    This process may take up to 30 seconds depending on API response time
+                  </p>
+                </div>
+              )}
+
               {/* Progress Steps */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3">

@@ -55,24 +55,46 @@ class PipelineController
         // In a real pipeline we would expand parameters, fan-out requests, transform & load.
         // Here we execute a single request to validate connectivity and create a run record.
         $startTime = microtime(true);
-        $res = $this->http->request($method, $url, $headers, null, 30);
+        $res = $this->http->request($method, $url, $headers, null, 60);
         $endTime = microtime(true);
         $body = $res['body'] ?? null;
 
         // Calculate execution time in milliseconds
         $executionTime = round(($endTime - $startTime) * 1000);
 
-        // Calculate records processed from response body
-        $recordsProcessed = 0;
+        // Calculate records extracted from response body
+        $recordsExtracted = 0;
         if ($res['ok'] && $body) {
             $decodedBody = json_decode($body, true);
             if (is_array($decodedBody)) {
-                $recordsProcessed = count($decodedBody);
+                // Check if response has a 'data' field that contains the actual records
+                if (isset($decodedBody['data'])) {
+                    $data = $decodedBody['data'];
+                    if (is_array($data)) {
+                        // Check if this is an array of records or a single record with fields
+                        $firstElement = reset($data);
+                        if (is_array($firstElement) || is_object($firstElement)) {
+                            // Array of records
+                            $recordsExtracted = count($data);
+                        } else {
+                            // Single record with multiple fields
+                            $recordsExtracted = 1;
+                        }
+                    } elseif (is_object($data) || is_array($data)) {
+                        // If data is a single record object/array, count as 1
+                        $recordsExtracted = 1;
+                    }
+                } else {
+                    // Fallback: if response itself is data, count elements
+                    $recordsExtracted = is_array($decodedBody) ? count($decodedBody) : 1;
+                }
             }
         }
 
-        // Transform and save data if connection has field mappings
+        // Initialize variables
         $dataTransformationResult = null;
+        $recordsProcessed = $recordsExtracted; // Default to extracted count
+
         if ($res['ok'] && $body) {
             try {
                 $connection = $this->connections->get($connectionId);
@@ -96,6 +118,22 @@ class PipelineController
             }
         }
 
+        // Calculate records loaded (saved to database)
+        $recordsLoaded = $recordsExtracted; // Default to extracted count
+        if ($dataTransformationResult && isset($dataTransformationResult['success']) && $dataTransformationResult['success']) {
+            $recordsLoaded = $dataTransformationResult['recordsSaved'] ?? $recordsExtracted;
+        }
+
+        // Extract actual data from response for frontend display
+        $extractedData = null;
+        if ($res['ok'] && $body) {
+            $decodedBody = json_decode($body, true);
+            if (is_array($decodedBody)) {
+                // Extract data field if it exists, otherwise use the whole response
+                $extractedData = isset($decodedBody['data']) ? $decodedBody['data'] : $decodedBody;
+            }
+        }
+
         $runId = $this->runs->create([
             'connectionId' => $connectionId,
             'status' => $res['ok'] ? 'success' : 'failed',
@@ -106,10 +144,13 @@ class PipelineController
             'method' => $method,
             'successfulRequests' => $res['ok'] ? 1 : 0,
             'totalRequests' => 1,
-            'recordsProcessed' => $recordsProcessed, // Calculate from response body
+            'recordsExtracted' => $recordsExtracted, // Records extracted from API response
+            'recordsProcessed' => $recordsProcessed, // Records processed (may include transformations)
+            'recordsLoaded' => $recordsLoaded, // Records successfully loaded to database
             'failedRequests' => $res['ok'] ? 0 : 1,
             'errorMessage' => $res['ok'] ? null : ($res['statusText'] ?? 'Request failed'),
             'response' => $body,
+            'extractedData' => $extractedData,
             'dataTransformation' => $dataTransformationResult,
         ]);
 

@@ -98,6 +98,24 @@ class RunRepository extends BaseRepository
         }
     }
 
+    public function update(string $id, array $data): bool
+    {
+        try {
+            $bulk = new \MongoDB\Driver\BulkWrite();
+            $bulk->update(
+                ['_id' => new \MongoDB\BSON\ObjectId($id)],
+                ['$set' => $data + ['updatedAt' => date('c')]],
+                ['upsert' => false]
+            );
+
+            $result = $this->executeBulkWrite($bulk);
+            return $result->getModifiedCount() > 0;
+        } catch (DatabaseException $e) {
+            // Return false on database errors to maintain backward compatibility
+            return false;
+        }
+    }
+
     protected function normalize($document): array
     {
         $arr = json_decode(json_encode($document, JSON_PARTIAL_OUTPUT_ON_ERROR), true) ?? [];
@@ -114,9 +132,12 @@ class RunRepository extends BaseRepository
             'duration' => $arr['duration'] ?? null,
             'recordsExtracted' => $arr['recordsExtracted'] ?? null,
             'recordsProcessed' => $arr['recordsProcessed'] ?? null,
+            'recordsLoaded' => $arr['recordsLoaded'] ?? null,
             'executionTime' => $arr['executionTime'] ?? null,
             'errorMessage' => $arr['errorMessage'] ?? null,
             'response' => $arr['response'] ?? null,
+            'extractedData' => $arr['extractedData'] ?? null,
+            'dataTransformation' => $arr['dataTransformation'] ?? null,
             'scheduleId' => $arr['scheduleId'] ?? null,
             'retryOf' => $arr['retryOf'] ?? null,
         ];

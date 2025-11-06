@@ -58,6 +58,11 @@ $router->put('/api/parameter-modes/{id}', [new ParameterModeController(), 'updat
 $router->delete('/api/parameter-modes/{id}', [new ParameterModeController(), 'delete']);
 
 // ============================================
+// INTEGRATOR APIs (New - Mappings)
+// ============================================
+$router->get('/api/mappings', [new MappingController(), 'index']);
+
+// ============================================
 // INTEGRATOR APIs (New - Runs)
 // ============================================
 $router->get('/api/runs', [new RunController(), 'index']);
@@ -68,10 +73,14 @@ $router->get('/api/runs', [new RunController(), 'index']);
 $router->get('/api/runs/{id}', [new RunDetailController(), 'show']);
 $router->post('/api/runs/{id}/retry', [new RunDetailController(), 'retry']);
 $router->post('/api/runs/{id}/export', [new RunDetailController(), 'export']);
+$router->get('/api/runs/{id}/logs', [new RunDetailController(), 'logs']);
+$router->get('/api/runs/{id}/requests', [new RunDetailController(), 'requests']);
+$router->post('/api/runs/{id}/execute', [new RunDetailController(), 'execute']);
 
 // ============================================
 // ANALYST/USER APIs (New - Data Export)
 // ============================================
+$router->get('/api/data', [new DataController(), 'index']);
 $router->post('/api/data/export', [new DataExportController(), 'export']);
 $router->get('/api/data/export/{id}', [new DataExportController(), 'download']);
 
@@ -95,6 +104,7 @@ $router->delete('/api/reports/{id}', [new ReportController(), 'delete']);
 // ============================================
 $router->get('/api/analytics/charts', [new VisualizationController(), 'charts']);
 $router->get('/api/analytics/metrics', [new VisualizationController(), 'metrics']);
+$router->get('/api/analytics/success-rate-history', [new AnalyticsController(), 'successRateHistory']);
 $router->get('/api/status', [new StatusController(), 'index']);
 
 // ============================================
@@ -148,11 +158,11 @@ $router->post('/api/schedules/{id}/resume', [new AirflowController(), 'resume'])
 // ============================================
 // AIRFLOW APIs (Frontend compatibility)
 // ============================================
-// $router->get('/api/airflow/runs', [new AirflowController(), 'getRuns']);
-// $router->get('/api/airflow/dags', [new AirflowController(), 'getDags']);
-// $router->post('/api/airflow/dags/{dagId}/trigger', [new AirflowController(), 'triggerDag']);
-// $router->post('/api/airflow/dags/{dagId}/pause', [new AirflowController(), 'pauseDag']);
-// $router->post('/api/airflow/dags/{dagId}/resume', [new AirflowController(), 'resumeDag']);
+$router->get('/api/airflow/runs', [new AirflowController(), 'getRuns']);
+$router->get('/api/airflow/dags', [new AirflowController(), 'getDags']);
+$router->post('/api/airflow/dags/{dagId}/trigger', [new AirflowController(), 'triggerDag']);
+$router->post('/api/airflow/dags/{dagId}/pause', [new AirflowController(), 'pauseDag']);
+$router->post('/api/airflow/dags/{dagId}/resume', [new AirflowController(), 'resumeDag']);
 
 // ============================================
 // USER APIs (Frontend compatibility)
