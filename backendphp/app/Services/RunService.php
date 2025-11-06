@@ -35,7 +35,7 @@ class RunService
             $connectionId = $run['connectionId'] ?? '';
             if ($connectionId && !isset($connectionNames[$connectionId])) {
                 try {
-                    $connection = $this->connectionRepo->findById($connectionId);
+                    $connection = $this->connectionRepo->findByConnectionId($connectionId);
                     $connectionNames[$connectionId] = $connection['name'] ?? 'Unknown Connection';
                 } catch (\Exception $e) {
                     $connectionNames[$connectionId] = 'Unknown Connection';
