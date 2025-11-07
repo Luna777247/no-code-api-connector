@@ -201,6 +201,8 @@ abstract class BaseRepository
     protected function countDocuments(array $filter = []): int
     {
         try {
+            ini_set('error_log', 'php://stderr');
+            error_log("[BaseRepository.countDocuments] Filter: " . json_encode($filter) . ", collection: " . $this->getCollectionName());
             $manager = $this->getManager();
             $db = $this->getDatabaseName();
 
@@ -211,10 +213,13 @@ abstract class BaseRepository
             ]);
 
             $cursor = $manager->executeCommand($db, $command);
-            $result = $cursor->toArray()[0];
-
-            return $result->n ?? 0;
+            $resultArray = $cursor->toArray();
+            $result = $resultArray[0] ?? null;
+            $count = $result ? ($result->n ?? 0) : 0;
+            error_log("[BaseRepository.countDocuments] Result array count: " . count($resultArray) . ", count: $count");
+            return $count;
         } catch (\MongoDB\Driver\Exception\Exception $e) {
+            error_log("[BaseRepository.countDocuments] Exception: " . $e->getMessage());
             throw new DatabaseException(
                 "Count operation failed: " . $e->getMessage(),
                 ['collection' => $this->getCollectionName()],

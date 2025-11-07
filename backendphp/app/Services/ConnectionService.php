@@ -20,6 +20,7 @@ class ConnectionService extends BaseService
 
     public function __construct(?UnitOfWorkInterface $unitOfWork = null)
     {
+        ini_set('error_log', 'php://stderr');
         $this->repo = new ConnectionRepository();
         $this->scheduleRepo = new ScheduleRepository();
         $this->runRepo = new RunRepository();
@@ -118,6 +119,25 @@ class ConnectionService extends BaseService
     public function normalize(array $row): array
     {
         $id = $row['_id'] ?? ($row['id'] ?? null);
+        $connectionId = $row['connectionId'] ?? ($id ?? '');
+
+        // Calculate real statistics from runs
+        $totalRuns = 0;
+        $successfulRuns = 0;
+        $lastRun = null;
+        try {
+            $totalRuns = $this->runRepo->countByConnectionId($connectionId);
+            $successfulRuns = $this->runRepo->countSuccessfulByConnectionId($connectionId);
+            $latestRun = $this->runRepo->findLatestByConnectionId($connectionId);
+            $lastRun = $latestRun['startedAt'] ?? null;
+        } catch (\Throwable $e) {
+            // Fallback to stored values if query fails
+            $totalRuns = (int)($row['totalRuns'] ?? 0);
+            $successfulRuns = (int)($row['successRate'] ?? 0) * $totalRuns / 100;
+            $lastRun = $row['lastRun'] ?? null;
+        }
+
+        $successRate = $totalRuns > 0 ? (int)round(($successfulRuns / $totalRuns) * 100) : 0;
 
         // Normalize headers: convert array of objects to object format
         $headers = $row['apiConfig']['headers'] ?? ($row['headers'] ?? []);
@@ -183,7 +203,7 @@ class ConnectionService extends BaseService
 
         return [
             'id' => $id,
-            'connectionId' => $row['connectionId'] ?? ($id ?? ''),
+            'connectionId' => $connectionId,
             'name' => $row['name'] ?? 'Unnamed',
             'description' => $row['description'] ?? '',
             'baseUrl' => $row['apiConfig']['baseUrl'] ?? ($row['baseUrl'] ?? ''),
@@ -196,9 +216,9 @@ class ConnectionService extends BaseService
             'tableName' => $row['tableName'] ?? 'api_data',
             'isActive' => (bool)($row['isActive'] ?? true),
             'createdAt' => $row['createdAt'] ?? date('c'),
-            'lastRun' => $row['lastRun'] ?? null,
-            'totalRuns' => (int)($row['totalRuns'] ?? 0),
-            'successRate' => (int)($row['successRate'] ?? 0),
+            'lastRun' => $lastRun,
+            'totalRuns' => $totalRuns,
+            'successRate' => $successRate,
         ];
     }
 

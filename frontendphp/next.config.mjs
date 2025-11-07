@@ -15,6 +15,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8000/api/:path*',
+      },
+    ]
+  },
   webpack: (config) => {
     // Map alias '@' to the repository root so that "@/components/ui/*" resolves
     config.resolve.alias = {

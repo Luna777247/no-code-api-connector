@@ -34,6 +34,62 @@ class RunRepository extends BaseRepository
         }
     }
 
+    public function countByConnectionId(string $connectionId): int
+    {
+        ini_set('error_log', 'php://stderr');
+        try {
+            error_log("[RunRepository.countByConnectionId] Querying for connectionId: $connectionId");
+            $count = $this->countDocuments(['connectionId' => $connectionId]);
+            error_log("[RunRepository.countByConnectionId] Count: $count");
+            return $count;
+        } catch (DatabaseException $e) {
+            error_log("[RunRepository.countByConnectionId] Exception: " . $e->getMessage());
+            // Return 0 on database errors to maintain backward compatibility
+            return 0;
+        }
+    }
+
+    public function countSuccessfulByConnectionId(string $connectionId): int
+    {
+        try {
+            error_log("[RunRepository.countSuccessfulByConnectionId] Querying for connectionId: $connectionId");
+            $count = $this->countDocuments(['connectionId' => $connectionId, 'status' => ['$in' => ['success', 'completed']]]);
+            error_log("[RunRepository.countSuccessfulByConnectionId] Count: $count");
+            return $count;
+        } catch (DatabaseException $e) {
+            error_log("[RunRepository.countSuccessfulByConnectionId] Exception: " . $e->getMessage());
+            // Return 0 on database errors to maintain backward compatibility
+            return 0;
+        }
+    }
+
+    public function findLatestByConnectionId(string $connectionId): ?array
+    {
+        try {
+            error_log("[RunRepository.findLatestByConnectionId] Querying for connectionId: $connectionId");
+            $results = $this->findWithPagination(
+                ['connectionId' => $connectionId],
+                ['limit' => 1, 'sort' => ['startedAt' => -1]]
+            );
+            error_log("[RunRepository.findLatestByConnectionId] Found: " . count($results));
+            return $results[0] ?? null;
+        } catch (DatabaseException $e) {
+            error_log("[RunRepository.findLatestByConnectionId] Exception: " . $e->getMessage());
+            // Return null on database errors to maintain backward compatibility
+            return null;
+        }
+    }
+
+    public function countAll(): int
+    {
+        try {
+            return $this->countDocuments();
+        } catch (DatabaseException $e) {
+            // Return 0 on database errors to maintain backward compatibility
+            return 0;
+        }
+    }
+
     public function findByScheduleId(string $scheduleId, int $limit = 50, int $offset = 0): array
     {
         try {

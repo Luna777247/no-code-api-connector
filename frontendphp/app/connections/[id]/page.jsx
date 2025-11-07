@@ -50,18 +50,18 @@ export default function ConnectionDetailPage() {
         setConnection(connectionRes.data)
         const runsRes = await apiClient.get(`/api/runs`, { params: { connectionId: connectionRes.data.connectionId, limit: 10 } })
         const runsData = runsRes.data?.runs || []
+        const totalRunsCount = runsRes.data?.total || runsData.length  // Use total from API, fallback to length
         setRuns(runsData)
         
         // Calculate statistics from runs
-        const totalRuns = runsData.length
         const successfulRuns = runsData.filter(run => run.status === 'success').length
-        const successRate = totalRuns > 0 ? Math.round((successfulRuns / totalRuns) * 100) : 0
+        const successRate = totalRunsCount > 0 ? Math.round((successfulRuns / totalRunsCount) * 100) : 0
         const lastRun = runsData.length > 0 ? runsData[0].startedAt : null
         
         // Update connection with calculated stats
         setConnection(prev => ({
           ...prev,
-          totalRuns,
+          totalRuns: totalRunsCount,
           successRate,
           lastRun
         }))

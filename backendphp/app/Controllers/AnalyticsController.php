@@ -5,6 +5,64 @@ use App\Repositories\RunRepository;
 
 class AnalyticsController
 {
+    public function summary(): array
+    {
+        $runRepo = new RunRepository();
+        $connectionRepo = new \App\Repositories\ConnectionRepository();
+        
+        // Get all runs for statistics
+        $allRuns = $runRepo->findAll(10000);
+        
+        // Calculate total runs
+        $totalRuns = count($allRuns);
+        
+        // Calculate success rate (last 30 days)
+        $thirtyDaysAgo = strtotime('-30 days');
+        $recentRuns = array_filter($allRuns, function($run) use ($thirtyDaysAgo) {
+            $runTime = isset($run['startedAt']) ? strtotime($run['startedAt']) : 0;
+            return $runTime >= $thirtyDaysAgo;
+        });
+        
+        $successfulRuns = array_filter($recentRuns, function($run) {
+            $status = strtolower((string)($run['status'] ?? 'success'));
+            return $status === 'success' || $status === 'completed';
+        });
+        
+        $successRate = count($recentRuns) > 0 
+            ? round((count($successfulRuns) / count($recentRuns)) * 100, 2)
+            : 0;
+        
+        // Calculate average response time
+        $responseTimes = array_filter(array_column($allRuns, 'responseTime'));
+        $avgResponseTime = count($responseTimes) > 0 
+            ? round(array_sum($responseTimes) / count($responseTimes), 2)
+            : 0;
+        
+        // Get connection count
+        $connections = $connectionRepo->findAll();
+        $activeConnections = count(array_filter($connections, function($conn) {
+            return ($conn['isActive'] ?? true);
+        }));
+        
+        // Get runs in last 24 hours
+        $oneDayAgo = strtotime('-1 day');
+        $runsLast24h = count(array_filter($allRuns, function($run) use ($oneDayAgo) {
+            $runTime = isset($run['startedAt']) ? strtotime($run['startedAt']) : 0;
+            return $runTime >= $oneDayAgo;
+        }));
+        
+        return [
+            'summary' => [
+                'totalRuns' => $totalRuns,
+                'successRate' => $successRate,
+                'avgResponseTime' => $avgResponseTime,
+                'activeConnections' => $activeConnections,
+                'runsLast24h' => $runsLast24h
+            ],
+            'timestamp' => date('c')
+        ];
+    }
+
     public function successRateHistory(): array
     {
         $days = isset($_GET['days']) ? (int)$_GET['days'] : 7;

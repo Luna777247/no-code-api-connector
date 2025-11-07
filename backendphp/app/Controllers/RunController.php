@@ -17,12 +17,27 @@ class RunController
         $connectionId = $_GET['connectionId'] ?? null;
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
         
+        error_log('[RunController.index] Called with connectionId=' . ($connectionId ?? 'null') . ', limit=' . $limit);
+        
         if ($connectionId) {
             // Filter by connection if provided
-            return [ 'runs' => $this->service->listByConnection($connectionId, $limit) ];
+            error_log('[RunController.index] Calling listByConnectionWithTotal');
+            $result = $this->service->listByConnectionWithTotal($connectionId, $limit);
+            error_log('[RunController.index] Result: total=' . ($result['total'] ?? 'null'));
+            return [ 
+                'runs' => $result['runs'],
+                'total' => $result['total'],
+                'connectionId' => $connectionId
+            ];
         } else {
             // Return all runs if no connectionId specified
-            return [ 'runs' => $this->service->listAll($limit) ];
+            error_log('[RunController.index] Calling listAllWithTotal');
+            $result = $this->service->listAllWithTotal($limit);
+            error_log('[RunController.index] Result: total=' . ($result['total'] ?? 'null'));
+            return [ 
+                'runs' => $result['runs'],
+                'total' => $result['total']
+            ];
         }
     }
 

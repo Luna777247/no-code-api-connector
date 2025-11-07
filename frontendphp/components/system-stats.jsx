@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Activity, Clock, Zap, CheckCircle } from 'lucide-react'
+import { Activity, Clock, Zap, CheckCircle, AlertCircle } from 'lucide-react'
 import apiClient from '../services/apiClient.js'
 
 export function SystemStats() {
@@ -15,18 +15,27 @@ export function SystemStats() {
     totalSchedules: '--'
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        console.log('[SystemStats] Fetching from /api/status...')
-        const response = await apiClient.get('/api/status')
-        console.log('[SystemStats] API Response:', response)
+        console.log('[SystemStats] Starting fetch from /api/status...')
         
-        const data = response?.data || {}
-        console.log('[SystemStats] Extracted data:', data)
+        const response = await apiClient.get('/api/status', {
+          validateStatus: () => true // Accept all status codes
+        })
+        
+        console.log('[SystemStats] Response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data
+        })
+        
+        if (response.status === 200 && response.data) {
+          const data = response.data
+          console.log('[SystemStats] Processing data:', data)
 
-        if (data && typeof data === 'object') {
           setStats({
             uptime: data.uptime || '--',
             totalRuns: (data.runs?.total !== undefined) ? data.runs.total.toString() : '--',
@@ -35,13 +44,29 @@ export function SystemStats() {
             activeConnections: (data.connections?.active !== undefined) ? data.connections.active.toString() : '--',
             totalSchedules: (data.schedules?.total !== undefined) ? data.schedules.total.toString() : '--'
           })
-          console.log('[SystemStats] Stats set successfully')
+          setError(null)
+          console.log('[SystemStats] Stats updated successfully')
         } else {
-          console.warn('[SystemStats] Invalid data structure:', data)
+          throw new Error(`API returned status ${response.status}`)
         }
-      } catch (error) {
-        console.error('[SystemStats] Failed to fetch system stats:', error)
-        console.error('[SystemStats] Error response:', error.response?.data)
+      } catch (err) {
+        const errorMsg = err.message || 'Unknown error'
+        console.error('[SystemStats] Error fetching stats:', {
+          message: errorMsg,
+          url: err.config?.url,
+          baseURL: err.config?.baseURL,
+          code: err.code,
+          response: err.response?.data
+        })
+        setError(errorMsg)
+        setStats({
+          uptime: '--',
+          totalRuns: '--',
+          last24hRuns: '--',
+          successRate: '--',
+          activeConnections: '--',
+          totalSchedules: '--'
+        })
       } finally {
         setLoading(false)
       }
@@ -49,6 +74,23 @@ export function SystemStats() {
 
     fetchStats()
   }, [])
+
+  if (error) {
+    return (
+      <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-center gap-2 text-red-800">
+          <AlertCircle className="h-5 w-5" />
+          <div>
+            <p className="font-semibold">Unable to fetch system stats</p>
+            <p className="text-sm">{error}</p>
+            <p className="text-xs text-red-600 mt-2">
+              Make sure the backend API is running at {process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6 mb-6">

@@ -371,14 +371,12 @@ services:
     ports:
       - "8000:80"
     environment:
-      - MONGODB_URI=mongodb://mongo:27017
-      - MONGODB_DATABASE=api_connector
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
       - APP_ENV=production
     volumes:
       - ./logs:/var/www/html/logs
       - ./dags:/var/www/html/dags
-    depends_on:
-      - mongo
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost/api/admin/health"]
       interval: 30s

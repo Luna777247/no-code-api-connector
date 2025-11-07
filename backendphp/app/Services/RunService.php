@@ -22,10 +22,30 @@ class RunService
         return $this->enrichWithConnectionNames($runs);
     }
 
+    public function listByConnectionWithTotal(string $connectionId, int $limit = 10): array
+    {
+        $runs = $this->repo->findByConnectionId($connectionId, $limit);
+        $total = $this->repo->countByConnectionId($connectionId);
+        return [
+            'runs' => $this->enrichWithConnectionNames($runs),
+            'total' => $total
+        ];
+    }
+
     public function listAll(int $limit = 50): array
     {
         $runs = $this->repo->findAll($limit);
         return $this->enrichWithConnectionNames($runs);
+    }
+
+    public function listAllWithTotal(int $limit = 50): array
+    {
+        $runs = $this->repo->findAll($limit);
+        $total = $this->repo->countAll();
+        return [
+            'runs' => $this->enrichWithConnectionNames($runs),
+            'total' => $total
+        ];
     }
 
     private function enrichWithConnectionNames(array $runs): array

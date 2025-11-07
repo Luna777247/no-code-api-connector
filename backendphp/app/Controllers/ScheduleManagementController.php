@@ -4,18 +4,21 @@ namespace App\Controllers;
 use App\Services\ScheduleService;
 use App\Services\AirflowService;
 use App\Repositories\ScheduleRepository;
+use App\Repositories\ConnectionRepository;
 
 class ScheduleManagementController
 {
     private ScheduleService $service;
     private AirflowService $airflowService;
     private ScheduleRepository $scheduleRepo;
+    private ConnectionRepository $connectionRepo;
 
     public function __construct()
     {
         $this->service = new ScheduleService();
         $this->airflowService = new AirflowService();
         $this->scheduleRepo = new ScheduleRepository();
+        $this->connectionRepo = new ConnectionRepository();
     }
 
     public function create(): array
@@ -26,6 +29,22 @@ class ScheduleManagementController
             http_response_code(400);
             return ['error' => 'connectionId and cronExpression are required'];
         }
+
+        // Look up connection name if not provided
+        if (empty($input['connectionName'])) {
+            $connection = $this->connectionRepo->findById($input['connectionId']);
+            if ($connection) {
+                $input['connectionName'] = $connection['name'] ?? 'Unknown Connection';
+            } else {
+                http_response_code(400);
+                return ['error' => 'Invalid connectionId'];
+            }
+        }
+
+        // Set defaults for optional fields
+        $input['timezone'] = $input['timezone'] ?? 'Asia/Ho_Chi_Minh';
+        $input['scheduleType'] = $input['scheduleType'] ?? 'cron';
+        $input['isActive'] = $input['isActive'] ?? true;
 
         $result = $this->service->createSchedule($input);
         if (!$result) {

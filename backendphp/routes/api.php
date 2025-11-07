@@ -20,8 +20,49 @@ use App\Controllers\DataSearchController;
 use App\Controllers\ReportController;
 use App\Controllers\VisualizationController;
 use App\Controllers\AirflowController;
+use App\Controllers\SmartTravelDashboardController;
 
 /** @var Router $router */
+
+// ============================================
+// SMART TRAVEL DASHBOARD APIs
+// ============================================
+$router->get('/api/smart-travel/dashboard/overview', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->overview();
+});
+$router->get('/api/smart-travel/dashboard/places-by-category', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->placesByCategory();
+});
+$router->get('/api/smart-travel/dashboard/places-by-rating', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->placesByRating();
+});
+$router->get('/api/smart-travel/dashboard/top-places', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->topPlaces();
+});
+$router->get('/api/smart-travel/dashboard/places-by-province', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->placesByProvince();
+});
+$router->get('/api/smart-travel/dashboard/average-rating-by-category', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->averageRatingByCategory();
+});
+$router->get('/api/smart-travel/dashboard/map-data', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->mapData();
+});
+$router->get('/api/smart-travel/dashboard/city-ranking', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->cityRanking();
+});
+$router->get('/api/smart-travel/dashboard/city-category-matrix', function() {
+    $controller = new SmartTravelDashboardController();
+    return $controller->cityCategoryMatrix();
+});
 
 // ============================================
 // INTEGRATOR APIs (New - Schedule Management)
@@ -103,6 +144,7 @@ $router->delete('/api/reports/{id}', [new ReportController(), 'delete']);
 // ============================================
 // ANALYST/USER APIs (New - Visualization)
 // ============================================
+$router->get('/api/analytics', [new AnalyticsController(), 'summary']);
 $router->get('/api/analytics/charts', [new VisualizationController(), 'charts']);
 $router->get('/api/analytics/metrics', [new VisualizationController(), 'metrics']);
 $router->get('/api/analytics/success-rate-history', [new AnalyticsController(), 'successRateHistory']);

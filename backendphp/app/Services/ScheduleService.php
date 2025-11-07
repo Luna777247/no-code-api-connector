@@ -225,13 +225,19 @@ class ScheduleService extends BaseService
             return $this->deleteEntity($id);
         }
 
+        // Convert ObjectId to string if needed
+        if ($scheduleId instanceof \MongoDB\BSON\ObjectId) {
+            $scheduleId = (string) $scheduleId;
+        }
+
         // Start cascading deletes
         $success = true;
 
         // 1. Delete related runs
         $runs = $this->runRepo->findByScheduleId($scheduleId);
         if (!$this->deleteCascade($runs, 'run')) {
-            $success = false;
+            error_log("ScheduleService.deleteSchedule: Failed to delete some runs for schedule {$id}, continuing with schedule deletion");
+            // Don't set success = false for run deletion failures
         }
 
         // 2. Finally, delete the schedule itself

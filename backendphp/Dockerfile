@@ -19,6 +19,9 @@ RUN apt-get update && apt-get install -y \
 # Install MongoDB extension
 RUN pecl install mongodb && docker-php-ext-enable mongodb
 
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -26,7 +29,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # Copy composer files
-COPY composer.json composer.lock ./
+COPY composer.json ./
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
@@ -69,7 +72,7 @@ RUN echo '#!/bin/bash\n\
 # Wait for MongoDB (only if using local MongoDB)\n\
 if [ "$MONGODB_URI" != "" ] && [[ "$MONGODB_URI" == mongodb://* ]]; then\n\
   echo "Waiting for local MongoDB..."\n\
-  while ! nc -z mongodb 27017; do\n\
+  while ! nc -z mongo 27017; do\n\
     sleep 1\n\
   done\n\
   echo "Local MongoDB is up!"\n\
