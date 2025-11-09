@@ -16,8 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import apiClient from "../../services/apiClient.js"
 
-export function ScheduleFormDialog({ schedule, onSave, trigger }) {
-  const [open, setOpen] = useState(false)
+export function ScheduleFormDialog({ schedule, onSave, trigger, open: externalOpen, onOpenChange }) {
+  const [internalOpen, setInternalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [connections, setConnections] = useState([])
   const [formData, setFormData] = useState(
@@ -30,14 +30,22 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
       isActive: true,
     },
   )
-
-  useEffect(() => {
-    if (open) {
-      fetchConnections()
+  
+  // Use external open state if provided, otherwise use internal state
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen
+  const setIsOpen = (newOpen) => {
+    if (onOpenChange) {
+      onOpenChange(newOpen)
+    } else {
+      setInternalOpen(newOpen)
     }
-    // Reset form data when dialog opens with a schedule
+  }
+
+  // Update form data when the schedule prop changes
+  useEffect(() => {
     if (schedule) {
       setFormData({
+        id: schedule.id || schedule._id || "",
         connectionId: schedule.connectionId || "",
         connectionName: schedule.connectionName || "",
         description: schedule.description || "",
@@ -47,6 +55,7 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
       })
     } else {
       setFormData({
+        id: "",
         connectionId: "",
         connectionName: "",
         description: "",
@@ -55,7 +64,14 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
         isActive: true,
       })
     }
-  }, [open, schedule])
+  }, [schedule]) // Only depend on schedule prop
+
+  // Fetch connections when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchConnections()
+    }
+  }, [isOpen])
 
   const fetchConnections = async () => {
     try {
@@ -78,24 +94,47 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    
+    // Only include fields that can be changed
+    const dataToSend = {
+      description: formData.description,
+      scheduleType: formData.scheduleType,
+      cronExpression: formData.cronExpression,
+      isActive: formData.isActive
+    }
+    
     try {
-      if (schedule?.id) {
-        await apiClient.put(`/api/schedules/${schedule.id}`, formData)
-      } else {
-        await apiClient.post("/api/schedules", formData)
+      const endpoint = formData.id 
+        ? `/api/schedules/${formData.id}`
+        : '/api/schedules'
+      
+      const method = formData.id ? 'put' : 'post'
+      
+      // For new schedules, include the connection info
+      if (!formData.id) {
+        dataToSend.connectionId = formData.connectionId
+        dataToSend.connectionName = formData.connectionName
       }
-      setOpen(false)
-      onSave?.()
+      
+      // Make the API call with the appropriate method
+      const response = await apiClient[method](endpoint, dataToSend)
+      
+      // Close the dialog and pass the updated data to parent
+      setIsOpen(false)
+      if (onSave) {
+        onSave(response.data || response) // Handle both response formats
+      }
     } catch (err) {
       console.error("[v0] Error saving schedule:", err)
+      // You might want to show an error message to the user here
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{schedule ? "Edit Schedule" : "Create Schedule"}</DialogTitle>
@@ -106,22 +145,38 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="connectionId">Connection</Label>
-            <Select
-              value={formData.connectionId}
-              onValueChange={handleConnectionChange}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a connection" />
-              </SelectTrigger>
-              <SelectContent>
-                {connections.map((connection) => (
-                  <SelectItem key={connection.id || connection._id} value={connection.id || connection._id}>
-                    {connection.name || connection.connectionName || `${connection.method} ${connection.endpoint}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {schedule ? (
+              // Show read-only input when editing
+              <Input
+                value={formData.connectionName || 'N/A'}
+                disabled={true}
+                className="mt-1 bg-muted/50"
+              />
+            ) : (
+              // Show select for new schedule
+              <Select
+                value={formData.connectionId}
+                onValueChange={handleConnectionChange}
+                disabled={loading}
+                required
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a connection" />
+                </SelectTrigger>
+                <SelectContent>
+                  {connections.map((conn) => (
+                    <SelectItem key={conn.id || conn._id} value={conn.id || conn._id}>
+                      {conn.name || conn.connectionName || `${conn.method} ${conn.endpoint}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {schedule && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Connection cannot be changed for existing schedules
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="description">Description</Label>
@@ -161,7 +216,7 @@ export function ScheduleFormDialog({ schedule, onSave, trigger }) {
             <p className="text-xs text-muted-foreground mt-1">Format: minute hour day month weekday</p>
           </div>
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

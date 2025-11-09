@@ -50,31 +50,33 @@ export default function SchedulesPage() {
     }
   }
 
-  const pauseSchedule = async (scheduleId) => {
+  const toggleScheduleStatus = async (scheduleId, currentStatus) => {
     setActioningId(scheduleId)
+    const newStatus = !currentStatus
     try {
-      await apiClient.put(`/api/schedules/${scheduleId}`, { isActive: false })
-      fetchSchedules()
+      await apiClient.put(`/api/schedules/${scheduleId}`, {
+        isActive: newStatus,
+      })
+      
+      // Update the local state immediately
+      setSchedules(prevSchedules => 
+        prevSchedules.map(schedule => 
+          schedule.id === scheduleId 
+            ? { ...schedule, isActive: newStatus } 
+            : schedule
+        )
+      )
     } catch (err) {
-      console.error("[v0] Error pausing schedule:", err)
-      setError("Failed to pause schedule")
+      console.error("[v0] Error updating schedule status:", err)
+      setError(`Failed to ${newStatus ? 'resume' : 'pause'} schedule`)
     } finally {
       setActioningId(null)
     }
   }
 
-  const resumeSchedule = async (scheduleId) => {
-    setActioningId(scheduleId)
-    try {
-      await apiClient.put(`/api/schedules/${scheduleId}`, { isActive: true })
-      fetchSchedules()
-    } catch (err) {
-      console.error("[v0] Error resuming schedule:", err)
-      setError("Failed to resume schedule")
-    } finally {
-      setActioningId(null)
-    }
-  }
+  // For backward compatibility
+  const pauseSchedule = (scheduleId) => toggleScheduleStatus(scheduleId, true)
+  const resumeSchedule = (scheduleId) => toggleScheduleStatus(scheduleId, false)
 
   const deleteSchedule = async (scheduleId) => {
     setActioningId(scheduleId)
@@ -129,9 +131,8 @@ export default function SchedulesPage() {
       showBackButton={true}
       headerActions={
         <ScheduleFormDialog
-          schedule={editingSchedule}
+          schedule={null}
           onSave={() => {
-            setEditingSchedule(null)
             fetchSchedules()
           }}
           trigger={
@@ -143,6 +144,40 @@ export default function SchedulesPage() {
         />
       }
     >
+      {/* Edit Schedule Dialog - Only rendered when editingSchedule has a value */}
+      <ScheduleFormDialog
+        key={editingSchedule?.id || 'create'}
+        schedule={editingSchedule}
+        onSave={(savedSchedule) => {
+          // Use functional update to ensure we have the latest state
+          setSchedules(prevSchedules => {
+            const scheduleId = savedSchedule.id || savedSchedule._id;
+            const existingIndex = prevSchedules.findIndex(s => s.id === scheduleId);
+            
+            if (existingIndex >= 0) {
+              // Update existing schedule using immutable update pattern
+              return [
+                ...prevSchedules.slice(0, existingIndex),
+                { ...prevSchedules[existingIndex], ...savedSchedule },
+                ...prevSchedules.slice(existingIndex + 1)
+              ];
+            } else {
+              // Add new schedule
+              return [...prevSchedules, { 
+                ...savedSchedule, 
+                id: scheduleId 
+              }];
+            }
+          });
+          setEditingSchedule(null);
+        }}
+        open={!!editingSchedule}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingSchedule(null)
+          }
+        }}
+      />
       {error && (
         <Card className="border-destructive mb-6">
           <CardContent className="flex items-center gap-3 py-4">
@@ -207,7 +242,15 @@ export default function SchedulesPage() {
                       )}
                       <span className="hidden sm:inline">{schedule.isActive ? "Pause" : "Resume"}</span>
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditingSchedule(schedule)} className="gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingSchedule(schedule)
+                      }} 
+                      className="gap-1"
+                    >
                       <Edit2 className="h-4 w-4" />
                       <span className="hidden sm:inline">Edit</span>
                     </Button>

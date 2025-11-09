@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -116,7 +116,7 @@ export default function HomeDashboard() {
         <div className="flex gap-4 flex-wrap">
           <Button
             size="lg"
-            onClick={() => handleNavigate('/connections')}
+            onClick={() => handleNavigate('/connections/new')}
             className="gap-2"
           >
             <Plus className="h-5 w-5" />
