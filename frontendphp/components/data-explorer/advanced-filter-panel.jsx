@@ -68,20 +68,6 @@ export function AdvancedFilterPanel({ filters, onFiltersChange }) {
             }
           />
         </div>
-        <div>
-          <Label htmlFor="status">Status</Label>
-          <Select value={filters.status || "all"} onValueChange={(value) => handleFilterChange("status", value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="success">Success</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {Object.keys(filters).length > 0 && (

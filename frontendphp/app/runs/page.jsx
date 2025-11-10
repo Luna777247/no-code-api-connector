@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlayCircle, Clock, CheckCircle2, XCircle, AlertCircle, Search, Filter, Eye } from "lucide-react"
+import { PlayCircle, Clock, CheckCircle2, XCircle, AlertCircle, Search, Filter, Eye, Trash2 } from "lucide-react"
 import { PageLayout } from "@/components/ui/page-layout"
 import apiClient from "../../services/apiClient.js"
 
@@ -18,6 +18,35 @@ export default function RunsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [timeFilter, setTimeFilter] = useState("24hours")
+  const [deletingId, setDeletingId] = useState(null)
+  const handleDeleteRun = async (runId) => {
+    if (!confirm('Are you sure you want to delete this run? This action cannot be undone.')) {
+      return
+    }
+    
+    setDeletingId(runId)
+    try {
+      try {
+        // Try with plural endpoint first
+        await apiClient.delete(`/api/runs/${runId}`)
+      } catch (err) {
+        if (err.response?.status === 404) {
+          console.log('Run not found on server, removing from UI...')
+          // Still remove from UI even if not found on server
+        } else {
+          throw err
+        }
+      }
+      
+      // Update the UI by removing the deleted run
+      setRuns(prevRuns => prevRuns.filter(run => run.id !== runId))
+    } catch (err) {
+      console.error('Error deleting run:', err)
+      setError('Failed to delete run. ' + (err.response?.data?.message || 'Please try again.'))
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   useEffect(() => {
     apiClient.get('/api/runs')
@@ -208,12 +237,32 @@ export default function RunsPage() {
                           </p>
                         )}
                       </div>
-                      <Link href={`/runs/${run.id}`}>
-                        <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                          <Eye className="h-4 w-4" />
-                          View Details
+                      <div className="flex gap-2">
+                        <Link href={`/runs/${run.id}`}>
+                          <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                            <Eye className="h-4 w-4" />
+                            View
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-2 bg-transparent text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDeleteRun(run.id)
+                          }}
+                          disabled={deletingId === run.id}
+                        >
+                          {deletingId === run.id ? (
+                            <Clock className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          {deletingId === run.id ? 'Deleting...' : 'Delete'}
                         </Button>
-                      </Link>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent suppressHydrationWarning={true}>

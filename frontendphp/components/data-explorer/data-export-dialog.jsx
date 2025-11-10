@@ -81,8 +81,7 @@ export function DataExportDialog({ connection }) {
               <SelectContent>
                 <SelectItem value="csv">CSV</SelectItem>
                 <SelectItem value="json">JSON</SelectItem>
-                <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
-                <SelectItem value="parquet">Parquet</SelectItem>
+                {/* <SelectItem value="xlsx">Excel (XLSX)</SelectItem> */}
               </SelectContent>
             </Select>
           </div>
