@@ -40,7 +40,7 @@ function convertFile(filePath) {
   // fs.unlinkSync(filePath); // commented out to keep original
 }
 
-// Duyệt toàn bộ thư mục
+// Traverse all directories
 function walkDir(dir) {
   fs.readdirSync(dir).forEach(file => {
     const filePath = path.join(dir, file);

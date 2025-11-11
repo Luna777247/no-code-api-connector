@@ -104,7 +104,7 @@ export function ReviewStep({ data }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Data Mapping</CardTitle>
-          <CardDescription>Bảng đích và các cột ánh xạ</CardDescription>
+          <CardDescription>Target table and mapped columns</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div>
@@ -135,7 +135,7 @@ export function ReviewStep({ data }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Schedule</CardTitle>
-          <CardDescription>Bật lịch chạy tự động</CardDescription>
+          <CardDescription>Enable automatic schedule execution</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex items-center gap-2">

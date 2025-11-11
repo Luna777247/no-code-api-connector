@@ -27,14 +27,14 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
   const extractFields = (obj, prefix = '$') => {
     const out = []
 
-    // Danh sách các trường kỹ thuật cần bỏ qua
+    // List of technical fields to skip
     const technicalFields = new Set([
       'status', 'ok', 'success', 'message', 'headers', 'response', 'request',
       'meta', 'pagination', 'page', 'limit', 'total', 'count', 'error',
       'errors', 'warnings', 'info', 'debug', 'trace', 'timestamp', 'version'
     ])
 
-    // Danh sách các trường quan trọng được ưu tiên
+    // List of priority fields to prioritize
     const priorityFields = new Set([
       'id', 'name', 'type', 'location', 'address', 'price', 'cost', 'rating',
       'description', 'coordinates', 'created_at', 'updated_at', 'metadata',
@@ -212,7 +212,7 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
             console.log('Body was already object:', parsedBody)
           }
 
-          // 3. Nếu body sau khi parse vẫn là JSON string → parse thêm lần nữa
+          // 3. If body after parsing is still a JSON string → parse one more time
           if (parsedBody && typeof parsedBody === 'string') {
             try {
               const doubleParsed = JSON.parse(parsedBody)
@@ -222,11 +222,10 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
               console.log('Body is string but not JSON, keeping as-is')
             }
           }
-
-          // 4. Chuẩn hóa cấu trúc dữ liệu trước khi extract
+          // 4. Normalize data structure before extraction
           let normalizedData = parsedBody
 
-          // Tự động tìm mảng dữ liệu chính
+          // Automatically find main data array
           if (Array.isArray(parsedBody)) {
             normalizedData = parsedBody
             console.log('Body is already an array, using directly')
@@ -252,7 +251,7 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
             normalizedData = parsedBody.places
             console.log('Found array in parsedBody.places')
           } else {
-            // Nếu không tìm thấy array, wrap trong array để xử lý như document đơn
+            // If array not found, wrap in array to handle as single document
             normalizedData = [parsedBody]
             console.log('No array found, wrapping single object in array')
           }
@@ -375,7 +374,7 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Field Mapping</CardTitle>
-          <CardDescription>Tự động chuẩn hóa dữ liệu API và ánh xạ vào collection api_places (xử lý JSON string, tìm mảng dữ liệu chính)</CardDescription>
+          <CardDescription>Automatically normalize API data and map to api_places collection (handle JSON strings, find main data array)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -387,7 +386,7 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
             <div className="sm:col-span-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Tìm theo source/target" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input className="pl-9" placeholder="Search by source/target" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
             </div>
             <div className="sm:col-span-1">
@@ -425,7 +424,7 @@ export function DataMappingStep({ data, apiConfig, parameters = [], onChange }) 
             <ScrollArea className={`${filtered.length > 10 ? 'h-80' : 'h-auto'}`}>
               {filtered.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
-                  <Database className="h-6 w-6 mx-auto mb-2 opacity-60" />Không có trường nào
+                  <Database className="h-6 w-6 mx-auto mb-2 opacity-60" />No fields available
                 </div>
               ) : filtered.map((f, i) => {
                 const idx = selectedFields.findIndex((x) => x === f)

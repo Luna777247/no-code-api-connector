@@ -100,7 +100,7 @@ export default function RunStartingPage() {
           setRunId(result.runId)
           setStatus('success')
 
-          // Tự động chuyển hướng sau 3 giây
+          // Automatically redirect after 3 seconds
           setTimeout(() => {
             router.push(`/runs/${result.runId}`)
           }, 3000)

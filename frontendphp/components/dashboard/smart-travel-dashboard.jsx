@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic'
 import { AlertCircle, TrendingUp, Users, MapPin, Star } from 'lucide-react'
 import apiClient from '@/services/apiClient'
 
-// Dynamic import Plotly để tránh SSR issues
+// Dynamic import Plotly to avoid SSR issues
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
 // Timeout utility
@@ -218,9 +218,9 @@ export default function SmartTravelDashboard() {
         <CardHeader className="bg-gradient-to-r from-amber-100 to-orange-100 border-b border-amber-200">
           <CardTitle className="text-amber-900 flex items-center gap-2">
             <span className="text-2xl">🏆</span>
-            Bảng Xếp Hạng Thành Phố (PRIORITY 1)
+            City Ranking Table (PRIORITY 1)
           </CardTitle>
-          <CardDescription className="text-amber-700">Top 20 cities by average rating - Sắp xếp theo rating ⭐</CardDescription>
+          <CardDescription className="text-amber-700">Top 20 cities by average rating - Sorted by rating ⭐</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           {cityRanking ? (
@@ -229,10 +229,10 @@ export default function SmartTravelDashboard() {
                 <thead className="bg-gradient-to-r from-amber-600 to-orange-600 text-white sticky top-0">
                   <tr>
                     <th className="text-left py-3 px-4 font-semibold">Rank</th>
-                    <th className="text-left py-3 px-4 font-semibold">Thành Phố</th>
-                    <th className="text-center py-3 px-4 font-semibold">Số Places</th>
+                    <th className="text-left py-3 px-4 font-semibold">City</th>
+                    <th className="text-center py-3 px-4 font-semibold">Number of Places</th>
                     <th className="text-center py-3 px-4 font-semibold">Rating ⭐</th>
-                    <th className="text-left py-3 px-4 font-semibold">Danh Mục Hàng Đầu</th>
+                    <th className="text-left py-3 px-4 font-semibold">Top Category</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -269,9 +269,9 @@ export default function SmartTravelDashboard() {
           <CardHeader className="bg-gradient-to-r from-blue-100 to-cyan-100 border-b border-blue-200">
             <CardTitle className="text-blue-900 flex items-center gap-2">
               <span className="text-2xl">📊</span>
-              Số lượng Places theo Category
+              Number of Places by Category
             </CardTitle>
-            <CardDescription className="text-blue-700">Top 20 categories - Phân bổ theo loại địa điểm</CardDescription>
+            <CardDescription className="text-blue-700">Top 20 categories - Distribution by place type</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {placesByCategory ? (
@@ -303,9 +303,9 @@ export default function SmartTravelDashboard() {
           <CardHeader className="bg-gradient-to-r from-pink-100 to-rose-100 border-b border-pink-200">
             <CardTitle className="text-pink-900 flex items-center gap-2">
               <span className="text-2xl">📈</span>
-              Phân bố Places theo Rating
+              Places Distribution by Rating
             </CardTitle>
-            <CardDescription className="text-pink-700">Distribution by rating ranges - Phân bổ theo khoảng đánh giá</CardDescription>
+            <CardDescription className="text-pink-700">Distribution by rating ranges - Distribution by rating ranges</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {placesByRating ? (
@@ -346,9 +346,9 @@ export default function SmartTravelDashboard() {
           <CardHeader className="bg-gradient-to-r from-teal-100 to-cyan-100 border-b border-teal-200">
             <CardTitle className="text-teal-900 flex items-center gap-2">
               <span className="text-2xl">📈</span>
-              Rating Trung Bình theo Category
+              Average Rating by Category
             </CardTitle>
-            <CardDescription className="text-teal-700">Top 20 categories by average rating - Xếp hạng trung bình</CardDescription>
+            <CardDescription className="text-teal-700">Top 20 categories by average rating - Ranking average</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {averageRating ? (
@@ -387,9 +387,9 @@ export default function SmartTravelDashboard() {
           <CardHeader className="bg-gradient-to-r from-violet-100 to-purple-100 border-b border-violet-200">
             <CardTitle className="text-violet-900 flex items-center gap-2">
               <span className="text-2xl">🗺️</span>
-              Số lượng Places theo Tỉnh Thành
+              Number of Places by Province
             </CardTitle>
-            <CardDescription className="text-violet-700">Top 20 provinces - Phân bổ địa phương</CardDescription>
+            <CardDescription className="text-violet-700">Top 20 provinces - Regional distribution</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {placesByProvince ? (
@@ -428,21 +428,21 @@ export default function SmartTravelDashboard() {
         <CardHeader className="bg-gradient-to-r from-orange-100 to-amber-100 border-b border-orange-200">
           <CardTitle className="text-orange-900 flex items-center gap-2">
             <span className="text-2xl">🔥</span>
-            Bản Đồ Nhiệt - Thành Phố vs Danh Mục (PRIORITY 2)
+            Heatmap - Cities vs Categories (PRIORITY 2)
           </CardTitle>
-          <CardDescription className="text-orange-700">"Where to find what?" - Mối quan hệ giữa thành phố và danh mục địa điểm 🎯</CardDescription>
+          <CardDescription className="text-orange-700">"Where to find what?" - Relationship between cities and place categories 🎯</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           {heatmapData ? (
             <div className="space-y-4">
               <div className="text-sm text-orange-700 bg-orange-50 p-3 rounded-lg border border-orange-100">
-                💡 Mỗi ô hiển thị số lượng địa điểm: Màu đậm = nhiều địa điểm, Màu nhạt = ít địa điểm
+                💡 Each cell shows the number of places: Dark color = many places, Light color = few places
               </div>
               <div className="overflow-x-auto rounded-lg border border-orange-100">
                 <table className="text-xs border-collapse w-full">
                   <thead>
                     <tr className="bg-gradient-to-r from-orange-600 to-amber-600">
-                      <th className="p-2 text-left text-white font-semibold min-w-24 sticky left-0 z-10">Thành Phố</th>
+                      <th className="p-2 text-left text-white font-semibold min-w-24 sticky left-0 z-10">City</th>
                       {heatmapData.categories?.slice(0, 12).map((cat) => (
                         <th 
                           key={cat} 
@@ -498,26 +498,26 @@ export default function SmartTravelDashboard() {
               
               {/* Legend */}
               <div className="flex flex-wrap items-center gap-4 text-xs p-3 bg-orange-50 rounded-lg border border-orange-100">
-                <span className="font-bold text-orange-900">Huyền thoại:</span>
+                <span className="font-bold text-orange-900">Legend:</span>
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-4 bg-red-600 rounded" />
-                  <span className="text-orange-900">75-100% (Rất nhiều)</span>
+                  <span className="text-orange-900">75-100% (Very High)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-4 bg-red-400 rounded" />
-                  <span className="text-orange-900">50-75%</span>
+                  <span className="text-orange-900">50-75% (High)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-4 bg-orange-300 rounded" />
-                  <span className="text-orange-900">25-50%</span>
+                  <span className="text-orange-900">25-50% (Medium)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-4 bg-orange-100 rounded border border-orange-300" />
-                  <span className="text-orange-900">10-25% (Ít)</span>
+                  <span className="text-orange-900">10-25% (Low)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-4 bg-gray-50 rounded border border-gray-300" />
-                  <span className="text-orange-900">1-10% (Rất ít)</span>
+                  <span className="text-orange-900">1-10% (Very Low)</span>
                 </div>
               </div>
             </div>
@@ -537,9 +537,9 @@ export default function SmartTravelDashboard() {
         <CardHeader className="bg-gradient-to-r from-green-100 to-emerald-100 border-b border-green-200">
           <CardTitle className="text-green-900 flex items-center gap-2">
             <span className="text-2xl">⭐</span>
-            Top 10 Places - Rating Cao Nhất (PRIORITY 3)
+            Top 10 Highest Rated Places (PRIORITY 3)
           </CardTitle>
-          <CardDescription className="text-green-700">Best rated places on the platform - Những địa điểm được đánh giá cao nhất</CardDescription>
+          <CardDescription className="text-green-700">Best rated places on the platform - Highest rated places overall</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           {topPlaces ? (
@@ -592,8 +592,8 @@ export default function SmartTravelDashboard() {
       {/* Map Scatter Chart - Lazy Load
       <Card>
         <CardHeader>
-          <CardTitle>Bản đồ Phân bố Địa điểm Du lịch</CardTitle>
-          <CardDescription>Vị trí địa lý của {mapData?.totalPoints || 0} địa điểm trên bản đồ thế giới</CardDescription>
+          <CardTitle>Map - Distribution of Tourist Places</CardTitle>
+          <CardDescription>Geographic location of {mapData?.totalPoints || 0} places on the world map</CardDescription>
         </CardHeader>
         <CardContent>
           {mapData ? (
@@ -650,7 +650,7 @@ export default function SmartTravelDashboard() {
             <div className="flex items-center justify-center h-[600px] text-muted-foreground">
               <div className="text-center">
                 <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                <p>Đang tải dữ liệu bản đồ...</p>
+                <p>Loading map data...</p>
               </div>
             </div>
           )}
@@ -660,13 +660,13 @@ export default function SmartTravelDashboard() {
       {/* Data Info */}
       <Card className="bg-muted/50">
         <CardHeader>
-          <CardTitle className="text-sm">ℹ️ Thông tin Dữ liệu</CardTitle>
+          <CardTitle className="text-sm">ℹ️ Data Information</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>✅ Dữ liệu được lấy từ: <code className="bg-black/10 px-2 py-1 rounded">smart_travel.places</code> (MongoDB Atlas)</p>
-          <p>✅ Queries được viết trực tiếp bằng MongoDB Aggregation Pipeline</p>
-          <p>✅ Biểu đồ được vẽ bằng Recharts library (không dùng công cụ bên ngoài)</p>
-          <p>✅ Cập nhật lần cuối: {overview?.timestamp}</p>
+          <p>✅ Data source: <code className="bg-black/10 px-2 py-1 rounded">smart_travel.places</code> (MongoDB Atlas)</p>
+          <p>✅ Queries written using MongoDB Aggregation Pipeline</p>
+          <p>✅ Charts rendered using Recharts library (no external tools)</p>
+          <p>✅ Last updated: {overview?.timestamp}</p>
         </CardContent>
       </Card>
     </div>
