@@ -23,8 +23,8 @@ docker-compose ps
 # View backend logs
 docker-compose logs -f backend
 
-# Test API
-curl http://localhost:8000/api/admin/health
+# # Test API
+# curl http://localhost:8000/api/admin/health
 ```
 
 ### Stop Everything

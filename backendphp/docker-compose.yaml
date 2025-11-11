@@ -373,8 +373,11 @@ services:
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - MONGODB_DATABASE=${MONGODB_DATABASE}
-      - APP_ENV=production
+      - APP_ENV=development
     volumes:
+      - ./app:/var/www/html/app
+      - ./public:/var/www/html/public
+      - ./routes:/var/www/html/routes
       - ./logs:/var/www/html/logs
       - ./dags:/var/www/html/dags
     healthcheck:

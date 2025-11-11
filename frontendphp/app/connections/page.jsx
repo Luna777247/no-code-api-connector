@@ -184,30 +184,32 @@ export default function ConnectionsPage() {
       title="API Connections"
       description="Manage your API integrations and configurations"
       showBackButton={true}
+      icon={<div className="p-2 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg"><Zap className="h-6 w-6 text-blue-600" /></div>}
       headerActions={
         <Link href="/connections/new">
-          <Button className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+          <Button className="w-full sm:w-auto gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all">
             <Plus className="h-4 w-4" />
-            New Connection
+            <span className="hidden sm:inline">New Connection</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </Link>
       }
     >
       {/* Search and Filter Bar */}
       {!loading && !error && connections.length > 0 && (
-        <div className="flex flex-col lg:flex-row gap-4 mb-6 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border">
+        <div className="flex flex-col lg:flex-row gap-4 mb-6 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border border-slate-200">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground flex-shrink-0" />
             <Input
               placeholder="Search connections..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4"
+              className="pl-10 pr-4 bg-white border-slate-200"
             />
           </div>
           <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full sm:w-40">
+              <SelectTrigger className="w-full sm:w-40 bg-white border-slate-200">
                 <ArrowUpDown className="h-4 w-4 mr-2 flex-shrink-0" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -221,7 +223,7 @@ export default function ConnectionsPage() {
               variant="outline"
               size="sm"
               onClick={() => toggleSort(sortBy)}
-              className="gap-2 flex-shrink-0"
+              className="gap-2 flex-shrink-0 border-slate-200 hover:bg-white"
             >
               <ArrowUpDown className="h-4 w-4" />
               {sortOrder === "asc" ? "↑" : "↓"}
@@ -261,34 +263,23 @@ export default function ConnectionsPage() {
       )}
 
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2 mb-4">
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-6 w-20" />
-                </div>
-                <div className="flex gap-2">
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-8 w-16" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200">
+          <CardContent className="flex flex-col items-center justify-center py-16" suppressHydrationWarning={true}>
+            <div className="inline-block animate-spin mb-4">
+              <Zap className="h-8 w-8 text-blue-500" />
+            </div>
+            <p className="text-muted-foreground">Loading connections...</p>
+          </CardContent>
+        </Card>
       ) : error ? (
-        <Card className="border-destructive bg-destructive/5">
-          <CardContent className="py-12 text-center">
-            <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <div className="text-destructive mb-2 font-semibold">Error loading connections</div>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={loadConnections} variant="outline" className="gap-2">
-              <Activity className="h-4 w-4" />
+        <Card className="border-red-200 bg-gradient-to-br from-red-50 to-red-100/50">
+          <CardContent className="flex flex-col items-center justify-center py-16" suppressHydrationWarning={true}>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+              <XCircle className="h-6 w-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-red-900 mb-2">Error loading connections</h3>
+            <p className="text-red-700 text-center mb-6 max-w-md">{error}</p>
+            <Button onClick={loadConnections} variant="outline" className="border-red-300 hover:bg-red-50">
               Try Again
             </Button>
           </CardContent>
@@ -297,26 +288,23 @@ export default function ConnectionsPage() {
         <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filteredConnections.length === 0 ? (
             <div className="col-span-full">
-              <Card className="border-dashed border-2 bg-gradient-to-br from-slate-50 to-slate-100">
+              <Card className="border-dashed border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100/50">
                 <CardContent className="flex flex-col items-center justify-center py-16">
-                  <div className="relative mb-6">
-                    <Database className="h-16 w-16 text-muted-foreground/50" />
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <Plus className="h-3 w-3 text-white" />
-                    </div>
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-slate-200/50 mb-4">
+                    <Database className="h-8 w-8 text-slate-500" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
                     {searchTerm || filterStatus !== "all" ? "No connections match your filters" : "No connections found"}
                   </h3>
-                  <p className="text-muted-foreground text-center mb-6 max-w-md">
+                  <p className="text-slate-600 text-center mb-6 max-w-md">
                     {searchTerm || filterStatus !== "all"
                       ? "Try adjusting your search or filter criteria"
                       : "Create your first API connection to get started with data integration"
                     }
                   </p>
                   {(!searchTerm && filterStatus === "all") && (
-                    <Link href="/connections/new">
-                      <Button className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                    <Link href="/connections/new" className="w-full sm:w-auto">
+                      <Button className="w-full gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all">
                         <Plus className="h-4 w-4" />
                         Create Your First Connection
                       </Button>
@@ -327,7 +315,7 @@ export default function ConnectionsPage() {
             </div>
           ) : (
             paginatedConnections.map((conn) => (
-              <Card key={conn.id} className="group hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500 hover:border-l-purple-500 overflow-hidden">
+              <Card key={conn.id} className="group bg-gradient-to-br from-white to-slate-50/50 hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500 hover:border-l-purple-500 border-slate-200 overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -335,86 +323,85 @@ export default function ConnectionsPage() {
                         <Globe className="h-5 w-5 text-blue-600" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <CardTitle className="text-lg truncate group-hover:text-blue-600 transition-colors">
+                        <CardTitle className="text-lg truncate group-hover:text-blue-600 transition-colors text-slate-900">
                           {conn.name}
                         </CardTitle>
                       </div>
                     </div>
-                    <CardDescription className="line-clamp-2 break-words ml-11">
+                    <CardDescription className="line-clamp-2 break-words ml-11 text-slate-600">
                       {getConnectionPreview(conn) || conn.description || 'No description provided'}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-2">
-                        <Link href={`/connections/${conn.id}`}>
-                          <Button variant="outline" size="sm" className="gap-2 hover:bg-blue-50 hover:border-blue-200">
-                            <Eye className="h-3 w-3" />
-                            View
-                          </Button>
-                        </Link>
-                        <Link href={`/connections/${conn.id}/edit`}>
-                          <Button variant="outline" size="sm" className="gap-2 hover:bg-purple-50 hover:border-purple-200">
-                            <Edit className="h-3 w-3" />
-                            Edit
-                          </Button>
-                        </Link>
-                      </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap flex-1">
+                      <Link href={`/connections/${conn.id}`} className="flex-1 sm:flex-initial">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto gap-2 hover:bg-blue-50 hover:border-blue-200 border-slate-200">
+                          <Eye className="h-3 w-3" />
+                          <span className="hidden sm:inline">View</span>
+                        </Button>
+                      </Link>
+                      <Link href={`/connections/${conn.id}/edit`} className="flex-1 sm:flex-initial">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto gap-2 hover:bg-purple-50 hover:border-purple-200 border-slate-200">
+                          <Edit className="h-3 w-3" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </Button>
+                      </Link>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Badge
-                        variant={conn.isActive ? "default" : "secondary"}
                         className={`w-fit ${conn.isActive ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800'}`}
                       >
                         {conn.isActive ? (
                           <>
                             <Zap className="h-3 w-3 mr-1 flex-shrink-0" />
-                            Active
+                            <span className="hidden sm:inline">Active</span>
                           </>
                         ) : (
                           <>
                             <XCircle className="h-3 w-3 mr-1 flex-shrink-0" />
-                            Inactive
+                            <span className="hidden sm:inline">Inactive</span>
                           </>
                         )}
                       </Badge>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          disabled={deletingId === conn.id}
-                        >
-                          {deletingId === conn.id ? (
-                            <Clock className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="flex items-center gap-2">
-                            <Trash2 className="h-5 w-5 text-destructive" />
-                            Delete Connection
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{conn.name}"? This action cannot be undone and will also remove all associated schedules and runs.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteConnection(conn.id)}
-                            className="bg-destructive hover:bg-destructive/90"
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0"
+                            disabled={deletingId === conn.id}
                           >
-                            Delete Connection
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            {deletingId === conn.id ? (
+                              <Clock className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                              <Trash2 className="h-5 w-5 text-destructive" />
+                              Delete Connection
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{conn.name}"? This action cannot be undone and will also remove all associated schedules and runs.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteConnection(conn.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Delete Connection
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -425,8 +412,8 @@ export default function ConnectionsPage() {
 
       {/* Pagination */}
       {!loading && !error && filteredConnections.length > 0 && totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-          <div className="text-sm text-muted-foreground text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border border-slate-200">
+          <div className="text-sm text-slate-600 text-center sm:text-left">
             Showing {Math.min((currentPage - 1) * itemsPerPage + 1, filteredConnections.length)} to {Math.min(currentPage * itemsPerPage, filteredConnections.length)} of {filteredConnections.length} connections
           </div>
           <div className="flex items-center gap-2">
@@ -435,7 +422,7 @@ export default function ConnectionsPage() {
               size="sm"
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="gap-1 sm:gap-2"
+              className="gap-1 sm:gap-2 border-slate-200 hover:bg-white"
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="hidden sm:inline">Previous</span>
@@ -465,7 +452,7 @@ export default function ConnectionsPage() {
               size="sm"
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="gap-1 sm:gap-2"
+              className="gap-1 sm:gap-2 border-slate-200 hover:bg-white"
             >
               <span className="hidden sm:inline">Next</span>
               <ChevronRight className="h-4 w-4" />

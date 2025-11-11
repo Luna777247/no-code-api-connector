@@ -49,6 +49,8 @@ class SmartTravelDashboardService
      */
     public function getOverview(): array
     {
+        $this->connectToMongoDB();
+        
         $totalPlaces = $this->placesCollection->countDocuments();
         
         // Lấy thống kê rating
@@ -79,6 +81,8 @@ class SmartTravelDashboardService
      */
     public function getPlacesByCategory(): array
     {
+        $this->connectToMongoDB();
+        
         $result = $this->placesCollection->aggregate([
             [
                 '$unwind' => '$types'
@@ -116,6 +120,8 @@ class SmartTravelDashboardService
      */
     public function getPlacesByRating(): array
     {
+        $this->connectToMongoDB();
+        
         $ratingBuckets = [
             '0-1' => ['$gte' => 0, '$lt' => 1],
             '1-2' => ['$gte' => 1, '$lt' => 2],
@@ -143,6 +149,8 @@ class SmartTravelDashboardService
      */
     public function getTopPlaces(): array
     {
+        $this->connectToMongoDB();
+        
         $result = $this->placesCollection->aggregate([
             [
                 '$sort' => ['rating' => -1, 'userRatingCount' => -1]
@@ -174,6 +182,8 @@ class SmartTravelDashboardService
      */
     public function getPlacesByProvince(): array
     {
+        $this->connectToMongoDB();
+        
         $result = $this->placesCollection->aggregate([
             [
                 '$group' => [
@@ -209,6 +219,8 @@ class SmartTravelDashboardService
      */
     public function getAverageRatingByCategory(): array
     {
+        $this->connectToMongoDB();
+        
         $result = $this->placesCollection->aggregate([
             [
                 '$unwind' => '$types'
@@ -248,6 +260,8 @@ class SmartTravelDashboardService
      */
     public function getMapData(): array
     {
+        $this->connectToMongoDB();
+        
         $result = $this->placesCollection->aggregate([
             [
                 '$match' => [
@@ -297,6 +311,8 @@ class SmartTravelDashboardService
      */
     public function getCityRanking(): array
     {
+        $this->connectToMongoDB();
+        
         try {
             $pipeline = [
                 [
@@ -338,19 +354,87 @@ class SmartTravelDashboardService
     }
 
     /**
-     * Lấy ma trận heatmap thành phố vs danh mục (Static data for performance)
+     * Lấy ma trận heatmap thành phố vs danh mục
+     * "Where to find what?" - Mối quan hệ giữa thành phố và danh mục địa điểm
+     * Optimized: Single aggregation pipeline, limited to top cities/categories
      */
     public function getCityCategoryMatrix(): array
     {
-        // Temporarily return static data to test if the endpoint works
-        return [
-            'cities' => ['New York', 'London', 'Paris'],
-            'categories' => ['restaurant', 'hotel', 'museum'],
-            'matrix' => [
-                [10, 5, 3],
-                [8, 6, 4],
-                [7, 4, 5]
-            ]
-        ];
+        try {
+            $this->connectToMongoDB();
+
+            // Single optimized pipeline: Get city-category combinations with counts
+            $pipeline = [
+                // Unwind types array
+                ['$unwind' => '$types'],
+                // Group by city and category
+                [
+                    '$group' => [
+                        '_id' => ['city' => '$city', 'category' => '$types'],
+                        'count' => ['$sum' => 1]
+                    ]
+                ],
+                // Sort by count descending to get top combinations first
+                ['$sort' => ['count' => -1]]
+            ];
+
+            $result = $this->placesCollection->aggregate($pipeline)->toArray();
+
+            // Extract unique cities and categories from results, limit to top
+            $cities = [];
+            $categories = [];
+            $cityCategoryMap = [];
+            $maxValue = 0;
+
+            foreach ($result as $doc) {
+                $city = $doc['_id']['city'];
+                $category = $doc['_id']['category'];
+                $count = (int)$doc['count'];
+
+                // Only track cities and categories that are in the results
+                if (!in_array($city, $cities) && count($cities) < 15) {
+                    $cities[] = $city;
+                }
+                if (!in_array($category, $categories) && count($categories) < 15) {
+                    $categories[] = $category;
+                }
+
+                // Store the count
+                if (in_array($city, $cities) && in_array($category, $categories)) {
+                    if (!isset($cityCategoryMap[$city])) {
+                        $cityCategoryMap[$city] = [];
+                    }
+                    $cityCategoryMap[$city][$category] = $count;
+
+                    if ($count > $maxValue) {
+                        $maxValue = $count;
+                    }
+                }
+            }
+
+            // Sort cities and categories alphabetically
+            sort($cities);
+            sort($categories);
+
+            // Build the final matrix
+            $matrix = [];
+            foreach ($cities as $city) {
+                $row = [];
+                foreach ($categories as $category) {
+                    $count = $cityCategoryMap[$city][$category] ?? 0;
+                    $row[] = $count;
+                }
+                $matrix[] = $row;
+            }
+
+            return [
+                'cities' => $cities,
+                'categories' => $categories,
+                'matrix' => $matrix,
+                'maxValue' => max($maxValue, 1)
+            ];
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Failed to get city-category matrix: ' . $e->getMessage());
+        }
     }
 }

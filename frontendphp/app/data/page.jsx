@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Database, Search, Filter, Clock, XCircle, ChevronDown } from "lucide-react"
+import { Database, Search, Filter, Clock, XCircle, ChevronDown, Download, BarChart3, RotateCcw } from "lucide-react"
 import { PageLayout } from "@/components/ui/page-layout"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import apiClient from "../../services/apiClient.js"
@@ -110,53 +110,53 @@ export default function DataPage() {
 
   return (
     <div suppressHydrationWarning>
-      <PageLayout title="Data Explorer" description="Browse and export extracted data" showBackButton={true}>
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by connection name or ID..."
-                  className="pl-9"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+      <PageLayout title="Data Explorer" description="Browse and export extracted data" showBackButton={true} icon={<div className="p-2 bg-gradient-to-br from-orange-100 to-orange-50 rounded-lg"><Database className="h-6 w-6 text-orange-600" /></div>}>
+        <Card className="mb-6 bg-gradient-to-r from-slate-50 to-slate-100 border">
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex-1 min-w-0 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input
+                    placeholder="Search by connection name or ID..."
+                    className="pl-10 pr-4"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Select value={selectedConnection} onValueChange={setSelectedConnection}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <Filter className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Connections</SelectItem>
+                    {uniqueConnections.map((conn) => (
+                      <SelectItem key={conn} value={conn}>
+                        {conn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={selectedConnection} onValueChange={setSelectedConnection}>
-                <SelectTrigger className="w-full md:w-48">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Connections</SelectItem>
-                  {uniqueConnections.map((conn) => (
-                    <SelectItem key={conn} value={conn}>
-                      {conn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="w-full justify-between bg-transparent">
-                  <span className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    Advanced Filters
-                  </span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <AdvancedFilterPanel filters={filters} onFiltersChange={setFilters} />
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        </CardContent>
-      </Card>
+              <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      Advanced Filters
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4">
+                  <AdvancedFilterPanel filters={filters} onFiltersChange={setFilters} />
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </CardContent>
+        </Card>
 
       {loading ? (
         <Card>
@@ -185,29 +185,41 @@ export default function DataPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
-            <Card>
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
               <CardHeader className="pb-3">
-                <CardDescription>Total Runs</CardDescription>
-                <CardTitle className="text-2xl">{filteredData.summary.totalRuns}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4 text-blue-600" />
+                  <CardDescription className="text-blue-700">Total Runs</CardDescription>
+                </div>
+                <CardTitle className="text-2xl lg:text-3xl text-blue-900">{filteredData.summary.totalRuns}</CardTitle>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
               <CardHeader className="pb-3">
-                <CardDescription>Total Records</CardDescription>
-                <CardTitle className="text-2xl">{filteredData.summary.totalRecords}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4 text-purple-600" />
+                  <CardDescription className="text-purple-700">Total Records</CardDescription>
+                </div>
+                <CardTitle className="text-2xl lg:text-3xl text-purple-900">{filteredData.summary.totalRecords}</CardTitle>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
               <CardHeader className="pb-3">
-                <CardDescription>Avg Execution Time</CardDescription>
-                <CardTitle className="text-2xl">{Math.round(filteredData.summary.avgExecutionTime / 1000)}s</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-green-600" />
+                  <CardDescription className="text-green-700">Avg Time</CardDescription>
+                </div>
+                <CardTitle className="text-2xl lg:text-3xl text-green-900">{Math.round(filteredData.summary.avgExecutionTime / 1000)}s</CardTitle>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
               <CardHeader className="pb-3">
-                <CardDescription>Data Size</CardDescription>
-                <CardTitle className="text-2xl">{filteredData.summary.estimatedDataSize}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-orange-600" />
+                  <CardDescription className="text-orange-700">Data Size</CardDescription>
+                </div>
+                <CardTitle className="text-2xl lg:text-3xl text-orange-900">{filteredData.summary.estimatedDataSize}</CardTitle>
               </CardHeader>
             </Card>
           </div>
@@ -216,22 +228,35 @@ export default function DataPage() {
             {filteredData.connectionBreakdown.map((connection) => {
               const lastRun = new Date(connection.lastRun)
               return (
-                <Card key={connection.connectionId}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Database className="h-5 w-5 text-muted-foreground" />
-                          <CardTitle className="text-lg font-mono">{connection.connectionName || connection.connectionId}</CardTitle>
-                          <Badge variant="outline">{connection.totalRecords} records</Badge>
-                          <Badge variant="secondary">{connection.runCount} runs</Badge>
+                <Card key={connection.connectionId} className="group hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500 hover:border-l-purple-500 overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <Database className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                            <CardTitle className="text-lg truncate group-hover:text-blue-600 transition-colors">
+                              {connection.connectionName || connection.connectionId}
+                            </CardTitle>
+                            <div className="flex gap-2 flex-wrap">
+                              <Badge variant="outline" className="flex-shrink-0">
+                                <Database className="h-3 w-3 mr-1" />
+                                {connection.totalRecords}
+                              </Badge>
+                              <Badge variant="secondary" className="flex-shrink-0">
+                                <RotateCcw className="h-3 w-3 mr-1" />
+                                {connection.runCount}
+                              </Badge>
+                            </div>
+                          </div>
+                          <CardDescription className="line-clamp-1">
+                            Last updated: {lastRun.toLocaleString()} • Avg: {Math.round(connection.avgExecutionTime / 1000)}s
+                          </CardDescription>
                         </div>
-                        <CardDescription>
-                          Last updated: {lastRun.toLocaleString()} • Avg:{" "}
-                          {Math.round(connection.avgExecutionTime / 1000)}s
-                        </CardDescription>
+                        <div className="flex-shrink-0">
+                          <DataExportDialog connection={connection} />
+                        </div>
                       </div>
-                      <DataExportDialog connection={connection} />
                     </div>
                   </CardHeader>
                 </Card>

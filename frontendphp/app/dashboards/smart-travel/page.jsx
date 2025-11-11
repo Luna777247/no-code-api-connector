@@ -1,15 +1,18 @@
 'use client'
 
 import SmartTravelDashboard from '@/components/dashboard/smart-travel-dashboard'
-import { BackToHomeButton } from '@/components/ui/back-to-home-button'
+import { PageLayout } from '@/components/ui/page-layout'
+import { MapPin } from 'lucide-react'
 
 export default function SmartTravelDashboardPage() {
   return (
-    <div>
-      <div className="p-4">
-        <BackToHomeButton />
-      </div>
+    <PageLayout
+      title="Smart Travel Dashboard"
+      description="Phân tích dữ liệu từ collection Places - MongoDB Atlas"
+      showBackButton={true}
+      icon={<div className="p-2 bg-gradient-to-br from-rose-100 to-rose-50 rounded-lg"><MapPin className="h-6 w-6 text-rose-600" /></div>}
+    >
       <SmartTravelDashboard />
-    </div>
+    </PageLayout>
   )
 }

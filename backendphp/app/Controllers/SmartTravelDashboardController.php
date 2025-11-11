@@ -132,13 +132,7 @@ class SmartTravelDashboardController
     public function cityCategoryMatrix(): array
     {
         try {
-            // TEMPORARY: Return simple response to test
-            return [
-                'cities' => ['Test City'],
-                'categories' => ['test'],
-                'matrix' => [[1]],
-                'test' => true
-            ];
+            return $this->service->getCityCategoryMatrix();
         } catch (\Exception $e) {
             http_response_code(500);
             return ['error' => $e->getMessage()];

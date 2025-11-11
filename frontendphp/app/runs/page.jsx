@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlayCircle, Clock, CheckCircle2, XCircle, AlertCircle, Search, Filter, Eye, Trash2 } from "lucide-react"
+import { PlayCircle, Clock, CheckCircle2, XCircle, AlertCircle, Search, Filter, Eye, Trash2, RotateCcw, Loader2 } from "lucide-react"
 import { PageLayout } from "@/components/ui/page-layout"
 import apiClient from "../../services/apiClient.js"
 
@@ -116,8 +116,25 @@ export default function RunsPage() {
         return "destructive"
       case "running":
         return "secondary"
+      case "pending":
+        return "outline"
       default:
         return "outline"
+    }
+  }
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "success":
+        return "bg-green-100 text-green-800"
+      case "failed":
+        return "bg-red-100 text-red-800"
+      case "running":
+        return "bg-blue-100 text-blue-800"
+      case "pending":
+        return "bg-yellow-100 text-yellow-800"
+      default:
+        return "bg-gray-100 text-gray-800"
     }
   }
 
@@ -126,45 +143,49 @@ export default function RunsPage() {
       title="Run History"
       description="View and monitor API execution history"
       showBackButton={true}
+      icon={<div className="p-2 bg-gradient-to-br from-green-100 to-green-50 rounded-lg"><PlayCircle className="h-6 w-6 text-green-600" /></div>}
     >
 
         <Card className="mb-6">
           <CardContent className="pt-6" suppressHydrationWarning={true}>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 min-w-0 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <Input 
                   placeholder="Search by connection name..." 
-                  className="pl-9"
+                  className="pl-10 pr-4"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="running">Running</SelectItem>
-                  <SelectItem value="partial">Partial</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={timeFilter} onValueChange={setTimeFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="24hours">Last 24 Hours</SelectItem>
-                  <SelectItem value="7days">Last 7 Days</SelectItem>
-                  <SelectItem value="30days">Last 30 Days</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-2 justify-center lg:justify-end">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <Filter className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="success">Success</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="running">Running</SelectItem>
+                    <SelectItem value="partial">Partial</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={timeFilter} onValueChange={setTimeFilter}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="24hours">Last 24 Hours</SelectItem>
+                    <SelectItem value="7days">Last 7 Days</SelectItem>
+                    <SelectItem value="30days">Last 30 Days</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -216,81 +237,101 @@ export default function RunsPage() {
               const startDate = new Date(run.startedAt)
               const completedDate = run.completedAt ? new Date(run.completedAt) : null
               return (
-                <Card key={run.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <CardTitle className="text-lg">Connection: {run.connectionName || run.connectionId}</CardTitle>
-                          <Badge variant={getStatusVariant(run.status)} className="gap-1">
-                            {getStatusIcon(run.status)}
-                            {run.status}
-                          </Badge>
-                        </div>
-                        <CardDescription>
-                          Started {startDate.toLocaleString()}
-                          {completedDate && ` • Completed ${completedDate.toLocaleString()}`}
-                        </CardDescription>
-                        {run.metadata?.apiUrl && (
-                          <p className="text-xs text-muted-foreground mt-1 font-mono">
-                            {run.metadata.method || 'GET'} {run.metadata.apiUrl}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Link href={`/runs/${run.id}`}>
-                          <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                            <Eye className="h-4 w-4" />
-                            View
-                          </Button>
-                        </Link>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="gap-2 bg-transparent text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleDeleteRun(run.id)
-                          }}
-                          disabled={deletingId === run.id}
-                        >
-                          {deletingId === run.id ? (
-                            <Clock className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
+                <Card key={run.id} className="group hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500 hover:border-l-purple-500 overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <CardTitle className="text-lg truncate group-hover:text-blue-600 transition-colors">
+                              Connection: {run.connectionName || run.connectionId}
+                            </CardTitle>
+                            <Badge variant={getStatusVariant(run.status)} className={`gap-1 flex-shrink-0 ${getStatusColor(run.status)}`}>
+                              {getStatusIcon(run.status)}
+                              <span className="hidden sm:inline capitalize">{run.status}</span>
+                              <span className="sm:hidden">{run.status.charAt(0).toUpperCase()}</span>
+                            </Badge>
+                          </div>
+                          <CardDescription className="line-clamp-1">
+                            Started {startDate.toLocaleString()}
+                            {completedDate && ` • Completed ${completedDate.toLocaleString()}`}
+                          </CardDescription>
+                          {run.metadata?.apiUrl && (
+                            <p className="text-xs text-foreground/70 mt-1 font-mono truncate">
+                              {run.metadata.method || 'GET'} {run.metadata.apiUrl}
+                            </p>
                           )}
-                          {deletingId === run.id ? 'Deleting...' : 'Delete'}
-                        </Button>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0 sm:flex-col">
+                          <Link href={`/runs/${run.id}`}>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Eye className="h-4 w-4" />
+                              <span className="hidden sm:inline">View</span>
+                            </Button>
+                          </Link>
+                          <Button 
+                            variant="outline"
+                            size="sm" 
+                            className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleDeleteRun(run.id)
+                            }}
+                            disabled={deletingId === run.id}
+                          >
+                            {deletingId === run.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                            <span className="hidden sm:inline">{deletingId === run.id ? 'Deleting...' : 'Delete'}</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent suppressHydrationWarning={true}>
-                    <div className="grid gap-4 md:grid-cols-5">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Duration</p>
-                        <p className="text-sm font-medium mt-1">{duration}</p>
+                    <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Duration</p>
+                          <p className="text-sm font-medium truncate">{duration}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Requests</p>
-                        <p className="text-sm font-medium mt-1">{run.successfulRequests}/{run.totalRequests}</p>
+                      <div className="flex items-center gap-2">
+                        <RotateCcw className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Requests</p>
+                          <p className="text-sm font-medium">{run.successfulRequests}/{run.totalRequests}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Success Rate</p>
-                        <p className="text-sm font-medium mt-1">{run.totalRequests > 0 ? Math.round((run.successfulRequests / run.totalRequests) * 100) : 0}%</p>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Success Rate</p>
+                          <p className="text-sm font-medium">{run.totalRequests > 0 ? Math.round((run.successfulRequests / run.totalRequests) * 100) : 0}%</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Records Processed</p>
-                        <p className="text-sm font-medium mt-1">{run.recordsProcessed}</p>
+                      <div className="hidden sm:flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Records</p>
+                          <p className="text-sm font-medium">{run.recordsProcessed}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Failed Requests</p>
-                        <p className="text-sm font-medium mt-1">{run.failedRequests}</p>
+                      <div className="hidden lg:flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">Failed</p>
+                          <p className="text-sm font-medium">{run.failedRequests}</p>
+                        </div>
                       </div>
                     </div>
                     {run.errors && (
                       <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <p className="text-sm text-destructive">{JSON.stringify(run.errors)}</p>
+                        <p className="text-sm text-destructive line-clamp-2">{JSON.stringify(run.errors)}</p>
                       </div>
                     )}
                   </CardContent>
