@@ -430,7 +430,7 @@ export default function HomeDashboard() {
               and start extracting data automatically
             </p>
             <div className="flex gap-2">
-              <Button onClick={() => handleNavigate('/connections')} className="gap-2">
+              <Button onClick={() => handleNavigate('/connections/new')} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Create First Connection
               </Button>

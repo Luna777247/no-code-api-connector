@@ -26,24 +26,24 @@ export function PageLayout({
         {/* Header */}
         {(title || showBackButton || headerActions) && (
           <header className="mb-8" suppressHydrationWarning={true}>
-            <div className="flex items-center justify-between" suppressHydrationWarning={true}>
-              <div className="flex items-center gap-4" suppressHydrationWarning={true}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" suppressHydrationWarning={true}>
+              <div className="flex items-center gap-4 min-w-0 flex-1" suppressHydrationWarning={true}>
                 {showBackButton && <BackToHomeButton />}
-                <div suppressHydrationWarning={true}>
+                <div className="min-w-0 flex-1" suppressHydrationWarning={true}>
                   {title && (
-                    <h1 className="text-3xl font-bold tracking-tight text-balance" suppressHydrationWarning={true}>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate" suppressHydrationWarning={true}>
                       {title}
                     </h1>
                   )}
                   {description && (
-                    <p className="mt-2 text-muted-foreground text-pretty" suppressHydrationWarning={true}>
+                    <p className="mt-1 sm:mt-2 text-sm sm:text-base text-foreground/80 line-clamp-2" suppressHydrationWarning={true}>
                       {description}
                     </p>
                   )}
                 </div>
               </div>
               {headerActions && (
-                <div className="flex items-center gap-2" suppressHydrationWarning={true}>
+                <div className="flex items-center gap-2 flex-shrink-0" suppressHydrationWarning={true}>
                   {headerActions}
                 </div>
               )}
