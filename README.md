@@ -1,77 +1,179 @@
 # No-Code API Connector Platform
 
-A powerful microservices-based platform for managing, scheduling, and analyzing APIs without writing code. Built with modern technologies including PHP, Next.js, MongoDB, and Apache Airflow.
+A microservices platform for managing, scheduling, and analyzing APIs without coding. Built with PHP, Next.js, MongoDB, and Apache Airflow.
 
-## 🎯 Project Overview
-
-**No-Code API Connector** is an enterprise-grade platform that enables users to:
-- 🔌 **Connect** to any REST API without coding
-- ⏰ **Schedule** automated API executions with cron expressions
-- 📊 **Analyze** API data with rich dashboards and visualizations
-- 💾 **Store** API responses in MongoDB Atlas
-- 🔄 **Transform** and map API data into structured formats
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Frontend (Next.js 15)                    │
-│              Port 3000 - React Components                   │
-└──────────────┬────────────────────────────────────┬─────────┘
-               │                                    │
-┌──────────────▼────────────────┐    ┌─────────────▼──────────┐
-│   Backend (PHP 8.3 REST API)  │    │  Airflow (Scheduler)   │
-│      Port 8000 - Apache       │    │   Port 8080            │
-│   Controller → Service →      │    │ - Task scheduling      │
-│   Repository Pattern          │    │ - DAG management       │
-└──────────────┬────────────────┘    └─────────────┬──────────┘
-               │                                    │
-┌──────────────┴────────────────┬───────────────────┴──────────┐
-│                                │                             │
-│   ┌─────────────────────────────┴──────────┐                 │
-│   │   MongoDB Atlas (Cloud Database)       │                 │
-│   │   - api_connections                   │                 │
-│   │   - api_schedules                     │                 │
-│   │   - api_runs                          │                 │
-│   │   - smart_travel.places (4,972+ docs)│                 │
-│   └────────────────────────────────────────┘                 │
-│                                                              │
-│   ┌─────────────────────────────┬──────────┐                 │
-│   │  PostgreSQL                 │  Redis   │                 │
-│   │  (Airflow metadata)         │ (Cache)  │                 │
-│   └─────────────────────────────┴──────────┘                 │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
-## 🚀 Quick Start
+## � Quick Setup
 
 ### Prerequisites
 - Docker & Docker Compose
-- Node.js 18+ (for local development)
+- Node.js 18+ (for frontend development)
 - Git
 
-### Setup & Running
-
-#### 1. Clone and Setup (Windows PowerShell)
-```powershell
-# Clone the repository
+### 1. Clone & Setup
+```bash
 git clone https://github.com/Luna777247/no-code-api-connector.git
 cd no-code-api-connector
 
+# Windows (default: localhost ports)
+.\setup.ps1
+
+# Linux/Mac (default: localhost ports)
+chmod +x setup.sh && ./setup.sh
 ```
 
-#### 2. Access the Platform
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **Airflow UI**: http://localhost:8080
-- **API Health Check**: GET http://localhost:8000/api/admin/health
+### 2. Custom Host/Port Setup
+Configure for different IPs or ports using environment variables:
 
-#### 3. Backend Development
-[Backend](backendphp/README.md)
+**Windows:**
+```powershell
+# Deploy on different IP/port
+$env:BACKEND_HOST = "192.168.1.100"
+$env:BACKEND_PORT = "8080"
+$env:AIRFLOW_PORT = "9090"
+.\setup.ps1
+```
 
-#### 4. Frontend Development
-[Frontend](frontendphp/README.md)
+**Linux/Mac:**
+```bash
+# Deploy on different IP/port
+export BACKEND_HOST=192.168.1.100
+export BACKEND_PORT=8080
+export AIRFLOW_PORT=9090
+./setup.sh
+```
+
+### 3. Manual Setup (Alternative)
+```bash
+# Backend environment
+cd backendphp
+cp .env.example .env
+
+# Frontend environment
+cd ../frontendphp
+cp .env.example .env.local
+
+# Start services
+cd ../backendphp
+docker-compose up -d
+
+# Start frontend (development)
+cd ../frontendphp
+npm install
+npm run dev
+```
+
+### 4. Access URLs
+- **Frontend**: http://localhost:3000 (or your configured host)
+- **Backend API**: http://localhost:8000 (or your configured host:port)
+- **Airflow UI**: http://localhost:8080 (or your configured host:port) - admin/admin
+- **Health Check**: http://localhost:8000/api/admin/health
+
+### 5. Test Portability
+Test deployment on different configurations:
+```bash
+# Windows
+.\test-portability.ps1 -TestHost 192.168.1.100 -TestPort 8080
+
+# Linux/Mac
+./test-portability.sh 192.168.1.100 8080
+```
+
+## 🌐 Deployment Scenarios
+
+### Local Development (Default)
+- **Host**: localhost
+- **Backend Port**: 8000
+- **Airflow Port**: 8080
+- **MongoDB**: localhost:27017
+- **Setup**: `.\setup.ps1` or `./setup.sh`
+
+### Remote Server Deployment
+```bash
+# Set environment variables for your server
+export BACKEND_HOST=your-server-ip
+export BACKEND_PORT=80
+export AIRFLOW_PORT=8080
+
+# Run setup
+./setup.sh
+```
+
+### Docker Network Deployment
+- **Backend**: Accessible at `http://backend:80` (internal Docker network)
+- **Frontend**: Configured to connect to backend service
+- **External Access**: Map ports as needed
+
+### Production Deployment Examples
+```bash
+# Example 1: Server with custom ports
+export BACKEND_HOST=192.168.1.100
+export BACKEND_PORT=8080
+export AIRFLOW_PORT=9090
+
+# Example 2: Domain-based deployment
+export BACKEND_HOST=api.yourdomain.com
+export BACKEND_PORT=443
+export AIRFLOW_PORT=8080
+```
+
+## 📁 Project Structure
+
+```
+├── backendphp/          # PHP REST API (Port 8000)
+├── frontendphp/         # Next.js UI (Port 3000)
+├── setup.ps1           # Windows setup script
+├── setup.sh            # Linux/Mac setup script
+└── README.md           # This file
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BACKEND_PORT` | 8000 | Backend API port |
+| `AIRFLOW_PORT` | 8080 | Airflow UI port |
+| `MONGO_PORT` | 27017 | MongoDB port |
+| `NEXT_PUBLIC_API_BASE_URL` | http://localhost:8000 | Frontend API endpoint |
+
+### Custom Ports
+```bash
+# Run on different ports
+BACKEND_PORT=9000 AIRFLOW_PORT=9090 docker-compose up -d
+```
+
+## 🐛 Troubleshooting
+
+### Services Won't Start
+```bash
+cd backendphp
+docker-compose logs
+docker-compose restart backend
+```
+
+### Port Conflicts
+```bash
+# Check what's using ports
+netstat -ano | findstr :8000  # Windows
+lsof -i :8000                # Linux/Mac
+
+# Change ports
+BACKEND_PORT=8001 docker-compose up -d
+```
+
+### Database Issues
+```bash
+# Reset database
+cd backendphp
+docker-compose down -v
+docker-compose up -d
+```
+
+## 📚 Documentation
+
+- [Backend API](backendphp/README.md)
+- [Frontend UI](frontendphp/README.md)
 
 ## 📚 Core Features
 

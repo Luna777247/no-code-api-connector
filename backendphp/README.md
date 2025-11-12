@@ -1,106 +1,44 @@
-# Backend PHP API - No-Code API Connector
+# Backend PHP API
 
-> A modern PHP-based REST API backend for orchestrating data integrations, API execution, and workflow scheduling.
+PHP 8.3 REST API backend for the No-Code API Connector platform.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose (v28.5+)
+- Docker & Docker Compose
 - PHP 8.3+ (for local development)
 - Composer 2.8+
 
-### Run Locally (Docker)
+### Run with Docker (Recommended)
 ```bash
-# Clone and navigate to backend directory
 cd backendphp
-
-# Start all services (backend, MongoDB, PostgreSQL, Redis, Airflow)
 docker-compose up -d
 
-# Check service health
-docker-compose ps
-
-# View backend logs
-docker-compose logs -f backend
-
-# # Test API
-# curl http://localhost:8000/api/admin/health
+# Check health
+curl http://localhost:8000/api/admin/health
 ```
 
-### Stop Everything
+### Local Development
 ```bash
-docker-compose down
+cd backendphp
+
+# Install dependencies
+composer install
+
+# Copy environment
+cp .env.example .env
+
+# Start services (MongoDB, PostgreSQL, Redis, Airflow)
+docker-compose up -d mongo postgres redis airflow-apiserver
+
+# Run PHP server
+php -S localhost:8000 -t public
 ```
 
-## 📋 What's Inside
-
-### Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  HTTP Clients (Web UI, Mobile, Scripts)                     │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-        ┌────────────▼────────────┐
-        │  Apache + PHP 8.3       │ :8000
-        │  Front Controller       │
-        │  (public/index.php)     │
-        └────────────┬────────────┘
-                     │
-        ┌────────────▼────────────┐
-        │  Router                 │
-        │  (routes/api.php)       │
-        └────────────┬────────────┘
-                     │
-        ┌────────────▼────────────────────────┐
-        │  Controllers                        │
-        │  ├─ ConnectionController            │
-        │  ├─ ScheduleManagementController    │
-        │  ├─ RunController                   │
-        │  └─ AdminSystemController          │
-        └────────────┬─────────────────────────┘
-                     │
-        ┌────────────▼────────────────────────┐
-        │  Services (Business Logic)          │
-        │  ├─ ConnectionService              │
-        │  ├─ ScheduleService                │
-        │  ├─ RunService                     │
-        │  └─ AirflowService                 │
-        └────────────┬─────────────────────────┘
-                     │
-        ┌────────────▼────────────────────────┐
-        │  Repositories (Data Access)         │
-        │  ├─ ConnectionRepository           │
-        │  ├─ ScheduleRepository             │
-        │  └─ RunRepository                  │
-        └────────────┬─────────────────────────┘
-                     │
-        ┌────────────▼─────────────────────────────────────┐
-        │  Persistence & External Services                │
-        │  - MongoDB: primary application data store — **uses MongoDB Atlas by default** via `MONGODB_URI` in `.env`. Check `app/Repositories/*` for usage. Can optionally use local MongoDB by changing `docker-compose.yaml`.      │
-        │  ├─ PostgreSQL (postgres:5432) - Airflow Meta   │
-        │  ├─ Redis (redis:6379) - Cache & Celery Broker │
-        │  └─ Airflow (airflow-apiserver:8080) - Workflows│
-        └─────────────────────────────────────────────────┘
-```
-
-### Core Concepts
-
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| **Connections** | Store API credentials, headers, authentication details | `ConnectionController`, `ConnectionRepository` |
-| **Schedules** | Define recurring API executions with cron expressions | `ScheduleManagementController`, `ScheduleService` |
-| **Runs** | Track API execution history and results | `RunController`, `RunRepository` |
-| **Pipelines** | Orchestrate multi-step data transformations | `PipelineController`, `ExecutionService` |
-| **Airflow DAGs** | Schedule and execute runs via Apache Airflow | `dags/`, `AirflowService` |
-
-## 🔌 API Endpoints
+## 📋 API Endpoints
 
 ### Health & Admin
 - `GET /api/admin/health` — System health status
-- `GET /api/admin/health/database` — Database connectivity
-- `GET /api/admin/users` — List users (admin only)
-- `GET /api/admin/logs` — View system logs
 
 ### Connections (CRUD)
 - `GET /api/connections` — List all connections
@@ -115,61 +53,66 @@ docker-compose down
 - `GET /api/schedules/{id}` — Get schedule details
 - `PUT /api/schedules/{id}` — Update schedule
 - `DELETE /api/schedules/{id}` — Delete schedule
-- `POST /api/schedules/{id}/trigger` — Manually trigger schedule
-- `GET /api/schedules/{id}/history` — View execution history
 
 ### Runs (Execution & Results)
 - `GET /api/runs` — List all runs
 - `POST /api/runs` — Execute a run immediately
 - `GET /api/runs/{id}` — Get run details & results
-- `POST /api/runs/{id}/retry` — Retry failed run
-- `GET /api/runs/{id}/logs` — View execution logs
 
-## 📖 Usage Examples
+## 🔧 Configuration
 
-### Create a Connection
+### Environment Variables
 ```bash
-curl -X POST http://localhost:8000/api/connections \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My REST API",
-    "type": "REST",
-    "baseUrl": "https://api.example.com",
-    "authentication": {
-      "type": "bearer",
-      "token": "sk_live_xxxxxx"
-    },
-    "headers": {
-      "X-Custom-Header": "value"
-    }
-  }'
+# Database
+MONGODB_URI=mongodb://mongo:27017
+MONGODB_DATABASE=dataplatform_db
+
+# Ports (configurable)
+BACKEND_PORT=8000
+AIRFLOW_PORT=8080
+MONGO_PORT=27017
+
+# Airflow
+AIRFLOW_USERNAME=admin
+AIRFLOW_PASSWORD=admin
 ```
 
-### Create a Schedule
+### Production Setup
 ```bash
-curl -X POST http://localhost:8000/api/schedules \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Hourly Sync",
-    "connectionId": "690d27fffe8324710b06bf25",
-    "cronExpression": "0 * * * *",
-    "enabled": true,
-    "requestData": {
-      "endpoint": "/users",
-      "method": "GET",
-      "parameters": {}
-    }
-  }'
+cp .env.production .env
+# Edit with production MongoDB Atlas URL and secrets
+docker-compose up -d
 ```
 
-### Execute a Run
+## 🐛 Troubleshooting
+
+### Services Won't Start
 ```bash
-curl -X POST http://localhost:8000/api/runs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "connectionId": "690d27fffe8324710b06bf25",
-    "scheduleId": "schedule-123",
-    "executedAt": "2025-11-07T22:53:24+00:00",
-    "triggeredBy": "manual"
-  }'
+docker-compose logs
+docker-compose restart backend
+```
+
+### Database Connection Issues
+```bash
+# Check MongoDB
+docker exec -it backendphp-mongo-1 mongosh --eval "db.runCommand({ping: 1})"
+
+# Reset database
+docker-compose down -v
+docker-compose up -d
+```
+
+## 📁 Project Structure
+
+```
+├── app/                 # Application code
+│   ├── Controllers/     # HTTP request handlers
+│   ├── Services/        # Business logic
+│   ├── Repositories/    # Data access layer
+│   └── Config/          # Configuration
+├── public/              # Web root
+├── routes/              # API routes
+├── dags/                # Airflow DAGs
+├── docker-compose.yaml  # Services orchestration
+└── Dockerfile           # Container definition
 ```

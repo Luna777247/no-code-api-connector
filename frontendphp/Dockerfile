@@ -39,7 +39,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Create .env.local for production
+# Create .env.local for production with configurable API URL
+# Use runtime environment variable with proper fallback
 RUN echo "NEXT_PUBLIC_API_BASE_URL=http://backend:80" > .env.local
 
 # Switch to non-root user
@@ -47,6 +48,9 @@ USER nextjs
 
 # Expose port
 EXPOSE 3001
+
+# Set environment variable at runtime (this will override the .env.local if set)
+ENV NEXT_PUBLIC_API_BASE_URL=http://backend:80
 
 # Start the application
 CMD ["pnpm", "start"]

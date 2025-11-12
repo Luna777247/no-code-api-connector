@@ -1,159 +1,88 @@
-# Frontend Next.js - No-Code API Connector
+# Frontend Next.js
 
-> Giao diện người dùng hiện đại cho nền tảng kết nối API không cần code, được xây dựng bằng Next.js 15 với TypeScript.
+Next.js 15 UI for the No-Code API Connector platform.
 
-## 🚀 Khởi chạy nhanh
+## 🚀 Quick Start
 
-### Yêu cầu hệ thống
-- Node.js 18+ (khuyến nghị 20+)
-- npm hoặc yarn
-- Docker & Docker Compose (cho chế độ container)
+### Prerequisites
+- Node.js 18+
+- npm or yarn
 
-### Chạy cục bộ (Development)
-
+### Development Mode
 ```bash
-# Di chuyển vào thư mục frontend
 cd frontendphp
 
-# Cài đặt dependencies
+# Install dependencies
 npm install
 
-# Chạy chế độ phát triển (port 3000)
+# Copy environment
+cp .env.example .env.local
+
+# Start development server
 npm run dev
 
-# Truy cập: http://localhost:3000
+# Access: http://localhost:3000
 ```
 
-### Chạy production
-
+### Production Build
 ```bash
-# Build ứng dụng
+# Build for production
 npm run build
 
-# Chạy server production
+# Start production server
 npm start
 ```
-<!-- 
-### Chạy bằng Docker
 
+## 🔧 Configuration
+
+### Environment Variables
 ```bash
-# Từ thư mục gốc dự án
-docker-compose up -d frontend
-
-# Hoặc chỉ build và chạy container frontend
-docker build -t frontendphp ./frontendphp
-docker run -p 3000:3000 frontendphp
-```
-
-## 📋 Kiến trúc
-
-```
-frontendphp/
-├── app/                    # Next.js App Router
-├── components/             # React components
-│   ├── client-*.jsx        # Client-side components
-│   └── ui/                 # Reusable UI components (shadcn/ui)
-├── hooks/                  # Custom React hooks
-├── lib/                    # Utility functions
-├── services/               # API client và services
-│   └── apiClient.js        # Axios client với caching
-├── public/                 # Static assets
-└── styles/                 # Global styles
-```
-
-### Tính năng chính
-- **Dashboard Analytics**: Hiển thị dữ liệu từ Smart Travel API với biểu đồ tương tác
-- **API Client**: Axios với timeout 120s và caching 5 phút cho dashboard APIs
-- **UI Components**: Shadcn/ui với Radix UI primitives
-- **TypeScript**: Type safety cho toàn bộ codebase
-- **Responsive Design**: Tailwind CSS cho giao diện hiện đại
-
-## 🔧 Cấu hình
-
-### Biến môi trường
-Tạo file `.env.local` trong thư mục `frontendphp`:
-
-```env
 # API Backend URL
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 
-# Các biến khác nếu cần
+# Environment
+NODE_ENV=development
 ```
 
-### API Endpoints được sử dụng
-- `GET /api/smart-travel/dashboard/overview` - Tổng quan dashboard
-- `GET /api/smart-travel/dashboard/city-ranking` - Xếp hạng thành phố
-- `GET /api/smart-travel/dashboard/city-category-matrix` - Ma trận danh mục
-- `GET /api/smart-travel/dashboard/map-data` - Dữ liệu bản đồ
-
-## 📖 Sử dụng
-
-### Dashboard Smart Travel
-- **Parallel Loading**: API calls được nhóm và tải song song để tối ưu hiệu suất
-- **Caching**: Response được cache 5 phút để giảm tải server
-- **Error Handling**: Fallback tự động và logging chi tiết
-- **Charts**: Sử dụng Recharts cho biểu đồ tương tác
-
-### Development Scripts
-
+### Custom API URL
 ```bash
-# Phát triển
-npm run dev
-
-# Build
-npm run build
-
-# Lint code
-npm run lint
-
-# Type checking
-npm run type-check
+# For different backend location
+NEXT_PUBLIC_API_BASE_URL=http://192.168.1.100:9000 npm run dev
 ```
 
-## 🔗 Tích hợp với Backend
+## 📱 Features
 
-Frontend kết nối với backend PHP qua HTTP REST API:
-- **Base URL**: http://localhost:8000
-- **Authentication**: Không yêu cầu (cho development)
-- **CORS**: Đã cấu hình cho localhost
+- **API Connections**: Create and manage API connections
+- **Schedules**: Set up automated API executions
+- **Dashboard**: Analytics and data visualization
+- **Runs**: Monitor API execution history
 
-### Workflow phát triển
-1. Backend chạy trên port 8000
-2. Frontend chạy trên port 3000
-3. API calls từ frontend đến backend
-4. Airflow xử lý scheduling (port 8080)
+## 🐛 Troubleshooting
 
-## 🐳 Docker
-
-### Build image
+### Port Already in Use
 ```bash
-docker build -t no-code-api-connector-frontend ./frontendphp
+# Use different port
+PORT=3001 npm run dev
 ```
 
-### Chạy container
+### API Connection Issues
 ```bash
-docker run -d \
-  --name frontend \
-  -p 3000:3000 \
-  -e NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 \
-  no-code-api-connector-frontend
+# Check backend is running
+curl http://localhost:8000/api/admin/health
+
+# Update API URL in .env.local
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
- -->
 
-## 📚 Tài liệu bổ sung
+## 📁 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Tailwind CSS](https://tailwindcss.com/docs)
-- [Shadcn/ui Components](https://ui.shadcn.com/)
-- [Backend API Docs](../backendphp/README.md)
-
-## 🤝 Đóng góp
-
-1. Fork repository
-2. Tạo feature branch
-3. Commit changes
-4. Push và tạo Pull Request
-
-## 📄 License
-
-MIT License - Xem file LICENSE để biết thêm chi tiết.
+```
+├── app/                 # Next.js app directory
+│   ├── components/      # React components
+│   ├── lib/            # Utilities and helpers
+│   └── public/         # Static assets
+├── services/           # API client and services
+├── styles/             # CSS and styling
+├── package.json        # Dependencies
+└── next.config.mjs     # Next.js configuration
+```
