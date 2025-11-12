@@ -373,6 +373,8 @@ services:
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - BACKEND_HOST=${BACKEND_HOST:-0.0.0.0}
+      - BACKEND_PORT=${BACKEND_PORT:-8000}
       - APP_ENV=development
     volumes:
       - ./app:/var/www/html/app
@@ -388,22 +390,23 @@ services:
       start_period: 30s
     restart: always
 
-  mongo:
-    image: mongo:7.0
-    ports:
-      - "${MONGO_PORT:-27017}:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=api_connector
-    volumes:
-      - mongo-data:/data/db
-      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
+  # mongo:
+  #   image: mongo:7.0
+  #   ports:
+  #     - "${MONGO_PORT:-27017}:27017"
+  #   environment:
+  #     - MONGO_INITDB_DATABASE=api_connector
+  #   volumes:
+  #     - mongo-data:/data/db
+  #     - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+  #   healthcheck:
+  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+  #     interval: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: always
 
 volumes:
   postgres-db-volume:
   mongo-data:
+

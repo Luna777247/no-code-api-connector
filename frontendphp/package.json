@@ -5,7 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "set NODE_OPTIONS=--inspect && next dev",
-    "start": "next start -p 3001"
+    "start": "next start"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "latest",

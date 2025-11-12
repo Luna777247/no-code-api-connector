@@ -24,15 +24,6 @@ npm run dev
 # Access: http://localhost:3000
 ```
 
-### Automated Setup Scripts
-```bash
-# Windows (PowerShell)
-.\setup.ps1 -FrontendPort 3001 -BackendHost backend -BackendPort 80
-
-# Linux/Mac (Bash)
-./setup.sh FRONTEND_PORT=3001 BACKEND_HOST=backend BACKEND_PORT=80
-```
-
 ### Manual Docker Deployment
 ```bash
 cd frontendphp
@@ -49,19 +40,25 @@ docker-compose up -d
 ### Custom Ports and API URL
 ```bash
 # Set custom frontend port
-FRONTEND_PORT=3001 docker-compose up -d
+$env:FRONTEND_PORT="3001"; docker-compose up -d
+
+# Set custom frontend host and port
+$env:FRONTEND_HOST="127.0.0.1"; $env:FRONTEND_PORT="3001"; docker-compose up -d
 
 # Set custom backend API URL
-NEXT_PUBLIC_API_BASE_URL=http://192.168.1.100:8000 docker-compose up -d
+$env:NEXT_PUBLIC_API_BASE_URL="http://192.168.1.100:8000"; docker-compose up -d
 
 # Combine both
-FRONTEND_PORT=3001 NEXT_PUBLIC_API_BASE_URL=http://backend:80 docker-compose up -d
+$env:FRONTEND_PORT="3001"; $env:NEXT_PUBLIC_API_BASE_URL="http://backend:80"; docker-compose up -d
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 ```bash
+# Frontend host (Docker only)
+FRONTEND_HOST=0.0.0.0
+
 # Frontend port (Docker only)
 FRONTEND_PORT=3000
 
@@ -93,7 +90,7 @@ NEXT_PUBLIC_API_BASE_URL=http://192.168.1.100:9000 npm run dev
 .\setup.ps1 -FrontendPort 3001
 
 # Or manually set environment variable
-FRONTEND_PORT=3001 docker-compose up -d
+$env:FRONTEND_PORT="3001"; docker-compose up -d
 ```
 
 ### API Connection Issues

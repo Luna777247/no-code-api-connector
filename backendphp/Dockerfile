@@ -50,7 +50,7 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf \
 
 # Copy Apache config
 COPY <<EOF /etc/apache2/sites-available/000-default.conf
-<VirtualHost *:80>
+<VirtualHost *:${BACKEND_PORT:-80}>
     ServerAdmin webmaster@localhost
     DocumentRoot /var/www/html/public
 
@@ -64,20 +64,27 @@ COPY <<EOF /etc/apache2/sites-available/000-default.conf
 </VirtualHost>
 EOF
 
-# Expose port 80
-EXPOSE 80
+# Expose port (will be overridden by docker-compose)
+EXPOSE ${BACKEND_PORT:-80}
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
-# Wait for MongoDB (only if using local MongoDB)\n\
-if [ "$MONGODB_URI" != "" ] && [[ "$MONGODB_URI" == mongodb://* ]]; then\n\
-  echo "Waiting for local MongoDB..."\n\
-  while ! nc -z mongo 27017; do\n\
-    sleep 1\n\
-  done\n\
-  echo "Local MongoDB is up!"\n\
+# Wait for MongoDB based on URI\n\
+if [ "$MONGODB_URI" != "" ]; then\n\
+  # Extract host and port from MongoDB URI\n\
+  if [[ "$MONGODB_URI" =~ mongodb://([^:]+):([0-9]+) ]]; then\n\
+    MONGO_HOST="${BASH_REMATCH[1]}"\n\
+    MONGO_PORT="${BASH_REMATCH[2]}"\n\
+    echo "Waiting for MongoDB at $MONGO_HOST:$MONGO_PORT..."\n\
+    while ! nc -z "$MONGO_HOST" "$MONGO_PORT"; do\n\
+      sleep 1\n\
+    done\n\
+    echo "MongoDB at $MONGO_HOST:$MONGO_PORT is up!"\n\
+  else\n\
+    echo "MongoDB URI does not contain host:port or using Atlas, skipping wait..."\n\
+  fi\n\
 else\n\
-  echo "Using MongoDB Atlas or external MongoDB, skipping local wait..."\n\
+  echo "MONGODB_URI not set, skipping MongoDB wait..."\n\
 fi\n\
 \n\
 # Start Apache\n\
