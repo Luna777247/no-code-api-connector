@@ -19,6 +19,12 @@ cd no-code-api-connector
 
 # Linux/Mac (default: localhost ports)
 chmod +x setup.sh && ./setup.sh
+
+# Windows with MongoDB Atlas
+.\setup.ps1 -BackendHost 192.168.1.100 -BackendPort 8080 -FrontendHost 192.168.1.100 -FrontendPort 3001 -UseMongoAtlas 
+
+# Linux/Mac with MongoDB Atlas
+USE_MONGO_ATLAS=true ./setup.sh
 ```
 
 ### 2. Custom Host/Port Setup
@@ -42,6 +48,54 @@ export AIRFLOW_PORT=9090
 ./setup.sh
 ```
 
+**Note:** Setup scripts will automatically update:
+- Frontend API URL to point to backend
+- MongoDB URI to use the specified backend host (when not using Atlas)
+
+### 2.5 MongoDB Atlas Setup (Optional)
+For production deployments, you can use MongoDB Atlas instead of local MongoDB:
+
+**Step 1: Get Atlas Connection String**
+1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
+2. Create/select a cluster
+3. Click "Connect" → "Connect your application"
+4. Copy the connection string (format: `mongodb+srv://user:pass@cluster.mongodb.net/dbname`)
+
+**Step 2: Switch to Atlas**
+```bash
+# Windows
+.\switch-mongodb.ps1 -Mode atlas -AtlasConnectionString "your-atlas-connection-string"
+
+# Linux/Mac
+chmod +x switch-mongodb.sh
+./switch-mongodb.sh atlas "your-atlas-connection-string"
+```
+
+**Step 3: Update Docker Compose**
+Comment out the `mongo` service in `backendphp/docker-compose.yaml`:
+```yaml
+# Comment out this entire service when using Atlas
+# mongo:
+#   image: mongo:7.0
+#   ...
+```
+
+**Step 4: Restart Services**
+```bash
+cd backendphp
+docker-compose down
+docker-compose up -d
+```
+
+**Switch Back to Local MongoDB:**
+```bash
+# Windows
+.\switch-mongodb.ps1 -Mode local
+
+# Linux/Mac
+./switch-mongodb.sh local
+```
+
 ### 3. Manual Setup (Alternative)
 ```bash
 # Backend environment
@@ -50,7 +104,7 @@ cp .env.example .env
 
 # Frontend environment
 cd ../frontendphp
-cp .env.example .env.local
+cp .env.example .env
 
 # Start services
 cd ../backendphp
@@ -132,9 +186,13 @@ export AIRFLOW_PORT=8080
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `BACKEND_HOST` | localhost | Backend server host/IP |
+| `FRONTEND_HOST` | localhost | Frontend server host/IP |
 | `BACKEND_PORT` | 8000 | Backend API port |
+| `FRONTEND_PORT` | 3000 | Frontend port |
 | `AIRFLOW_PORT` | 8080 | Airflow UI port |
-| `MONGO_PORT` | 27017 | MongoDB port |
+| `MONGO_PORT` | 27017 | MongoDB port (local only) |
+| `USE_MONGO_ATLAS` | false | Use MongoDB Atlas instead of local MongoDB |
 | `NEXT_PUBLIC_API_BASE_URL` | http://localhost:8000 | Frontend API endpoint |
 
 ### Custom Ports

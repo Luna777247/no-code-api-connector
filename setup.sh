@@ -1,16 +1,27 @@
 #!/bin/bash
 
 # No-Code API Connector Setup Script
-# This script sets up the development environment with proper defaults
+# This script sets up both backend and frontend development environments
 
 # Default configuration (can be overridden with environment variables)
 BACKEND_HOST=${BACKEND_HOST:-localhost}
 FRONTEND_HOST=${FRONTEND_HOST:-localhost}
 BACKEND_PORT=${BACKEND_PORT:-8000}
+FRONTEND_PORT=${FRONTEND_PORT:-3000}
 AIRFLOW_PORT=${AIRFLOW_PORT:-8080}
+MONGO_PORT=${MONGO_PORT:-27017}
+USE_MONGO_ATLAS=${USE_MONGO_ATLAS:-false}
 
-echo "🚀 Setting up No-Code API Connector..."
-echo "📍 Configuration: Backend=$BACKEND_HOST:$BACKEND_PORT, Airflow=$FRONTEND_HOST:$AIRFLOW_PORT"
+echo "🚀 Setting up No-Code API Connector (Backend + Frontend)..."
+echo "📍 Configuration:"
+echo "   Backend:  $BACKEND_HOST:$BACKEND_PORT"
+echo "   Frontend: $FRONTEND_HOST:$FRONTEND_PORT"
+echo "   Airflow:  $FRONTEND_HOST:$AIRFLOW_PORT"
+if [ "$USE_MONGO_ATLAS" = "true" ]; then
+    echo "   MongoDB:  Atlas (cloud)"
+else
+    echo "   MongoDB:  $BACKEND_HOST:$MONGO_PORT"
+fi
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
@@ -29,18 +40,33 @@ fi
 
 # Navigate to frontend directory and copy environment files
 echo "📁 Setting up frontend environment..."
-if [ ! -f "frontendphp/.env.local" ]; then
-    # Create .env.local with configurable API URL
-    API_URL="http://$BACKEND_HOST:$BACKEND_PORT"
-    echo "NEXT_PUBLIC_API_BASE_URL=$API_URL" > frontendphp/.env.local
-    echo "✅ Created frontendphp/.env.local with API URL: $API_URL"
+if [ ! -f "frontendphp/.env" ]; then
+    cp frontendphp/.env.example frontendphp/.env
+    echo "✅ Created frontendphp/.env from template"
 else
-    echo "ℹ️  frontendphp/.env.local already exists, skipping..."
+    echo "ℹ️  frontendphp/.env already exists, skipping..."
 fi
 
-# Start the services
-echo "🐳 Starting Docker services..."
+# Update frontend environment with API URL
+API_URL="http://$BACKEND_HOST:$BACKEND_PORT"
+sed -i.bak "s|^NEXT_PUBLIC_API_BASE_URL=.*|NEXT_PUBLIC_API_BASE_URL=$API_URL|" frontendphp/.env
+echo "✅ Updated frontend API URL: $API_URL"
+
+# Update backend MongoDB URI if not using Atlas
+if [ "$USE_MONGO_ATLAS" != "true" ]; then
+    MONGO_URI="mongodb://$BACKEND_HOST:$MONGO_PORT"
+    sed -i.bak "s|^MONGODB_URI=.*|MONGODB_URI=$MONGO_URI|" backendphp/.env
+    echo "✅ Updated backend MongoDB URI: $MONGO_URI"
+fi
+
+# Start backend services
+echo "🐳 Starting backend services..."
 cd backendphp
+docker-compose up -d
+
+# Start frontend services
+echo "🌐 Starting frontend services..."
+cd ../frontendphp
 docker-compose up -d
 
 echo "⏳ Waiting for services to be ready..."
@@ -48,6 +74,8 @@ sleep 30
 
 # Check service health
 echo "🔍 Checking service health..."
+
+# Check backend health
 BACKEND_URL="http://$BACKEND_HOST:$BACKEND_PORT/api/admin/health"
 if curl -s --max-time 10 "$BACKEND_URL" | grep -q '"status":"healthy"'; then
     echo "✅ Backend is healthy!"
@@ -55,19 +83,28 @@ else
     echo "⚠️  Backend health check failed. Services may still be starting..."
 fi
 
+# Check frontend health (basic connectivity check)
+FRONTEND_URL="http://$FRONTEND_HOST:$FRONTEND_PORT"
+if curl -s --max-time 10 "$FRONTEND_URL" | grep -q "html"; then
+    echo "✅ Frontend is accessible!"
+else
+    echo "⚠️  Frontend health check failed. Services may still be starting..."
+fi
+
 echo ""
-echo "🎉 Setup complete!"
+echo "🎉 Setup complete! Both backend and frontend are running."
 echo ""
 echo "🌐 Access URLs:"
-echo "   Backend API:  http://$BACKEND_HOST:$BACKEND_PORT"
-echo "   Airflow UI:   http://$FRONTEND_HOST:$AIRFLOW_PORT"
+echo "   Frontend:    http://$FRONTEND_HOST:$FRONTEND_PORT"
+echo "   Backend API: http://$BACKEND_HOST:$BACKEND_PORT"
+echo "   Airflow UI:  http://$FRONTEND_HOST:$AIRFLOW_PORT"
+if [ "$USE_MONGO_ATLAS" = "true" ]; then
+    echo "   MongoDB:     Atlas (configured in .env)"
+else
+    echo "   MongoDB:     $BACKEND_HOST:$MONGO_PORT"
+fi
 echo ""
-echo "🌐 Access URLs:"
-echo "   Frontend: http://localhost:3000"
-echo "   Backend:  http://localhost:8000"
-echo "   Airflow:  http://localhost:8080"
-echo ""
-echo "📝 Next steps:"
-echo "   1. Start frontend: cd frontendphp && npm run dev"
-echo "   2. Check backend health: curl http://localhost:8000/api/admin/health"
-echo "   3. View Airflow UI at http://localhost:8080 (admin/admin)"
+echo "📝 Useful commands:"
+echo "   View logs: docker-compose logs -f (in respective directories)"
+echo "   Stop all: cd backendphp && docker-compose down && cd ../frontendphp && docker-compose down"
+echo "   Restart: cd backendphp && docker-compose restart && cd ../frontendphp && docker-compose restart"

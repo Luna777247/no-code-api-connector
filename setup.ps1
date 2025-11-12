@@ -1,15 +1,26 @@
 # No-Code API Connector Setup Script
-# This script sets up the development environment with proper defaults
+# This script sets up both backend and frontend development environments
 
 param(
     [string]$BackendHost = "localhost",
     [string]$FrontendHost = "localhost",
     [int]$BackendPort = 8000,
-    [int]$AirflowPort = 8080
+    [int]$FrontendPort = 3000,
+    [int]$AirflowPort = 8080,
+    [int]$MongoPort = 27017,
+    [switch]$UseMongoAtlas
 )
 
-Write-Host "🚀 Setting up No-Code API Connector..." -ForegroundColor Green
-Write-Host "📍 Configuration: Backend=$BackendHost`:$BackendPort, Airflow=$FrontendHost`:$AirflowPort" -ForegroundColor Cyan
+Write-Host "🚀 Setting up No-Code API Connector (Backend + Frontend)..." -ForegroundColor Green
+Write-Host "📍 Configuration:" -ForegroundColor Cyan
+Write-Host "   Backend:  $BackendHost`:$BackendPort" -ForegroundColor White
+Write-Host "   Frontend: $FrontendHost`:$FrontendPort" -ForegroundColor White
+Write-Host "   Airflow:  $FrontendHost`:$AirflowPort" -ForegroundColor White
+if ($UseMongoAtlas) {
+    Write-Host "   MongoDB:  Atlas (cloud)" -ForegroundColor White
+} else {
+    Write-Host "   MongoDB:  $BackendHost`:$MongoPort" -ForegroundColor White
+}
 
 # Check if Docker is running
 if ($LASTEXITCODE -ne 0) {
@@ -28,18 +39,37 @@ if (!(Test-Path "backendphp\.env")) {
 
 # Navigate to frontend directory and copy environment files
 Write-Host "📁 Setting up frontend environment..." -ForegroundColor Yellow
-if (!(Test-Path "frontendphp\.env.local")) {
-    # Create .env.local with configurable API URL
-    $apiUrl = "http://$BackendHost`:$BackendPort"
-    "NEXT_PUBLIC_API_BASE_URL=$apiUrl" | Out-File -FilePath "frontendphp\.env.local" -Encoding UTF8
-    Write-Host "✅ Created frontendphp\.env.local with API URL: $apiUrl" -ForegroundColor Green
+if (!(Test-Path "frontendphp\.env")) {
+    Copy-Item "frontendphp\.env.example" "frontendphp\.env"
+    Write-Host "✅ Created frontendphp\.env from template" -ForegroundColor Green
 } else {
-    Write-Host "ℹ️  frontendphp\.env.local already exists, skipping..." -ForegroundColor Blue
+    Write-Host "ℹ️  frontendphp\.env already exists, skipping..." -ForegroundColor Blue
 }
 
-# Start the services
-Write-Host "🐳 Starting Docker services..." -ForegroundColor Yellow
+# Update frontend environment with API URL
+$apiUrl = "http://$BackendHost`:$BackendPort"
+$content = Get-Content "frontendphp\.env" -Raw
+$content = $content -replace "(?m)^NEXT_PUBLIC_API_BASE_URL=.*$", "NEXT_PUBLIC_API_BASE_URL=$apiUrl"
+Set-Content "frontendphp\.env" $content
+Write-Host "✅ Updated frontend API URL: $apiUrl" -ForegroundColor Green
+
+# Update backend MongoDB URI if not using Atlas
+if (!$UseMongoAtlas) {
+    $mongoUri = "mongodb://$BackendHost`:$MongoPort"
+    $backendContent = Get-Content "backendphp\.env" -Raw
+    $backendContent = $backendContent -replace "(?m)^MONGODB_URI=.*$", "MONGODB_URI=$mongoUri"
+    Set-Content "backendphp\.env" $backendContent
+    Write-Host "✅ Updated backend MongoDB URI: $mongoUri" -ForegroundColor Green
+}
+
+# Start backend services
+Write-Host "🐳 Starting backend services..." -ForegroundColor Yellow
 Set-Location backendphp
+docker-compose up -d
+
+# Start frontend services
+Write-Host "🌐 Starting frontend services..." -ForegroundColor Yellow
+Set-Location ../frontendphp
 docker-compose up -d
 
 Write-Host "⏳ Waiting for services to be ready..." -ForegroundColor Yellow
@@ -47,6 +77,8 @@ Start-Sleep -Seconds 30
 
 # Check service health
 Write-Host "🔍 Checking service health..." -ForegroundColor Yellow
+
+# Check backend health
 $backendUrl = "http://$BackendHost`:$BackendPort/api/admin/health"
 try {
     $response = Invoke-WebRequest -Uri $backendUrl -TimeoutSec 10
@@ -59,19 +91,33 @@ try {
     Write-Host "⚠️  Backend health check failed: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
+# Check frontend health (basic connectivity check)
+$frontendUrl = "http://$FrontendHost`:$FrontendPort"
+try {
+    $response = Invoke-WebRequest -Uri $frontendUrl -TimeoutSec 10
+    if ($response.Content -match "html") {
+        Write-Host "✅ Frontend is accessible!" -ForegroundColor Green
+    } else {
+        Write-Host "⚠️  Frontend health check failed. Services may still be starting..." -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "⚠️  Frontend health check failed: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 Write-Host "" -ForegroundColor White
-Write-Host "🎉 Setup complete!" -ForegroundColor Green
+Write-Host "🎉 Setup complete! Both backend and frontend are running." -ForegroundColor Green
 Write-Host "" -ForegroundColor White
 Write-Host "🌐 Access URLs:" -ForegroundColor Cyan
-Write-Host "   Backend API:  http://$BackendHost`:$BackendPort" -ForegroundColor White
-Write-Host "   Airflow UI:   http://$FrontendHost`:$AirflowPort" -ForegroundColor White
+Write-Host "   Frontend:    http://$FrontendHost`:$FrontendPort" -ForegroundColor White
+Write-Host "   Backend API: http://$BackendHost`:$BackendPort" -ForegroundColor White
+Write-Host "   Airflow UI:  http://$FrontendHost`:$AirflowPort" -ForegroundColor White
+if ($UseMongoAtlas) {
+    Write-Host "   MongoDB:     Atlas (configured in .env)" -ForegroundColor White
+} else {
+    Write-Host "   MongoDB:     $BackendHost`:$MongoPort" -ForegroundColor White
+}
 Write-Host "" -ForegroundColor White
-Write-Host "🌐 Access URLs:" -ForegroundColor Cyan
-Write-Host "   Frontend: http://localhost:3000" -ForegroundColor White
-Write-Host "   Backend:  http://localhost:8000" -ForegroundColor White
-Write-Host "   Airflow:  http://localhost:8080" -ForegroundColor White
-Write-Host "" -ForegroundColor White
-Write-Host "📝 Next steps:" -ForegroundColor Cyan
-Write-Host "   1. Start frontend: cd frontendphp && npm run dev" -ForegroundColor White
-Write-Host "   2. Check backend health: curl http://localhost:8000/api/admin/health" -ForegroundColor White
-Write-Host "   3. View Airflow UI at http://localhost:8080 (admin/admin)" -ForegroundColor White
+Write-Host "📝 Useful commands:" -ForegroundColor Cyan
+Write-Host "   View logs: docker-compose logs -f (in respective directories)" -ForegroundColor White
+Write-Host "   Stop all: cd backendphp; docker-compose down; cd ../frontendphp; docker-compose down" -ForegroundColor White
+Write-Host "   Restart: cd backendphp; docker-compose restart; cd ../frontendphp; docker-compose restart" -ForegroundColor White

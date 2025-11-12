@@ -16,7 +16,7 @@ cd frontendphp
 npm install
 
 # Copy environment
-cp .env.example .env.local
+cp .env.example .env
 
 # Start development server
 npm run dev
@@ -24,19 +24,47 @@ npm run dev
 # Access: http://localhost:3000
 ```
 
-### Production Build
+### Automated Setup Scripts
 ```bash
-# Build for production
-npm run build
+# Windows (PowerShell)
+.\setup.ps1 -FrontendPort 3001 -BackendHost backend -BackendPort 80
 
-# Start production server
-npm start
+# Linux/Mac (Bash)
+./setup.sh FRONTEND_PORT=3001 BACKEND_HOST=backend BACKEND_PORT=80
+```
+
+### Manual Docker Deployment
+```bash
+cd frontendphp
+
+# Copy environment configuration
+cp .env.example .env
+
+# Start with Docker Compose
+docker-compose up -d
+
+# Access: http://localhost:3000
+```
+
+### Custom Ports and API URL
+```bash
+# Set custom frontend port
+FRONTEND_PORT=3001 docker-compose up -d
+
+# Set custom backend API URL
+NEXT_PUBLIC_API_BASE_URL=http://192.168.1.100:8000 docker-compose up -d
+
+# Combine both
+FRONTEND_PORT=3001 NEXT_PUBLIC_API_BASE_URL=http://backend:80 docker-compose up -d
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 ```bash
+# Frontend port (Docker only)
+FRONTEND_PORT=3000
+
 # API Backend URL
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 
@@ -61,8 +89,11 @@ NEXT_PUBLIC_API_BASE_URL=http://192.168.1.100:9000 npm run dev
 
 ### Port Already in Use
 ```bash
-# Use different port
-PORT=3001 npm run dev
+# Use different port with setup script
+.\setup.ps1 -FrontendPort 3001
+
+# Or manually set environment variable
+FRONTEND_PORT=3001 docker-compose up -d
 ```
 
 ### API Connection Issues
@@ -70,8 +101,21 @@ PORT=3001 npm run dev
 # Check backend is running
 curl http://localhost:8000/api/admin/health
 
-# Update API URL in .env.local
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# Update API URL with setup script
+.\setup.ps1 -BackendHost 192.168.1.100 -BackendPort 9000
+
+# Or manually update .env file
+NEXT_PUBLIC_API_BASE_URL=http://192.168.1.100:9000
+```
+
+### Docker Issues
+```bash
+# Rebuild containers
+docker-compose down
+docker-compose up -d --build
+
+# View detailed logs
+docker-compose logs -f frontend
 ```
 
 ## 📁 Project Structure
